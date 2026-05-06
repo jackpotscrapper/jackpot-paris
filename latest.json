@@ -1,0 +1,25 @@
+{
+  "ts": "2026-05-06T20:58:41.328Z",
+  "results": {
+    "circus": {
+      "ok": false,
+      "error": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+    },
+    "pierrecharron": {
+      "ok": false,
+      "error": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+    },
+    "elysees": {
+      "ok": false,
+      "error": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+    },
+    "barriere": {
+      "ok": false,
+      "error": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+    },
+    "imperial": {
+      "ok": false,
+      "error": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+    }
+  }
+}

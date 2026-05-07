@@ -23,7 +23,7 @@ jobs:
 
       - name: Lancement du scraping
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DATA_DIR: '.'
         run: node scraper.js
 

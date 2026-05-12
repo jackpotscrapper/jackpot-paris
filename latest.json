@@ -1,11 +1,7 @@
 {
-  "ts": "2026-05-11T22:34:44.450Z",
+  "ts": "2026-05-12T08:15:04.477Z",
   "results": {
     "imperial": {
-      "ok": false,
-      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
-    },
-    "pierrecharron": {
       "ok": false,
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
     },
@@ -18,6 +14,10 @@
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
     },
     "circus": {
+      "ok": false,
+      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+    },
+    "pierrecharron": {
       "ok": false,
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
     }

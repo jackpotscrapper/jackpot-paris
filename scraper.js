@@ -4,6 +4,9 @@ const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '.';
 
+// page.waitForTimeout a été supprimé dans Puppeteer v23+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ─── Configuration des 5 clubs ────────────────────────────────────────────────
 
 const clubs = [
@@ -13,7 +16,7 @@ const clubs = [
     url: 'https://imperialclubparis.com/',
     waitMs: 2000,
     extract: async (page) => {
-      await page.waitForTimeout(2000);
+      await sleep(2000);
       return await page.evaluate(() => {
         let blackjack_minor = null;
         let blackjack_major = null;
@@ -49,7 +52,7 @@ const clubs = [
     waitMs: 6000,
     extract: async (page) => {
       // Le carousel alterne toutes les 5s → attendre jusqu'à 12s pour capturer les 2 jackpots
-      await page.waitForTimeout(6000);
+      await sleep(6000);
 
       const first = await page.evaluate(() => {
         let blackjack = null;
@@ -73,7 +76,7 @@ const clubs = [
 
       // Si un jackpot manque, attendre le prochain slide du carousel
       if (!first.blackjack || !first.ultimate) {
-        await page.waitForTimeout(6000);
+        await sleep(6000);
         const second = await page.evaluate(() => {
           let blackjack = null;
           let ultimate = null;
@@ -107,7 +110,7 @@ const clubs = [
     url: 'https://www.pariselyseesclub.com/',
     waitMs: 3000,
     extract: async (page) => {
-      await page.waitForTimeout(3000);
+      await sleep(3000);
       return await page.evaluate(() => {
         let blackjack = null;
         let ultimate = null;
@@ -138,7 +141,7 @@ const clubs = [
     waitMs: 4000,
     extract: async (page) => {
       // Site JS dynamique — attendre le rendu
-      await page.waitForTimeout(4000);
+      await sleep(4000);
       return await page.evaluate(() => {
         let blazing_blackjack = null;
         let uth_progressive = null;
@@ -169,7 +172,7 @@ const clubs = [
     waitMs: 5000,
     extract: async (page) => {
       // Widget JS en bas à droite — attendre le rendu complet
-      await page.waitForTimeout(5000);
+      await sleep(5000);
       return await page.evaluate(() => {
         let blackjack_minor = null;
         let blackjack_major = null;

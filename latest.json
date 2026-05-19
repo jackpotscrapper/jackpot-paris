@@ -1,7 +1,15 @@
 {
-  "ts": "2026-05-19T11:42:59.187Z",
+  "ts": "2026-05-19T18:27:25.026Z",
   "results": {
+    "pierrecharron": {
+      "ok": false,
+      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
+    },
     "imperial": {
+      "ok": false,
+      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
+    },
+    "circus": {
       "ok": false,
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
     },
@@ -9,15 +17,7 @@
       "ok": false,
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
     },
-    "pierrecharron": {
-      "ok": false,
-      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
-    },
     "barriere": {
-      "ok": false,
-      "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
-    },
-    "circus": {
       "ok": false,
       "error": "models/gemini-1.5-flash-latest is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
     }

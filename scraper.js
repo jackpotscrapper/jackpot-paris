@@ -1,119 +1,282 @@
-/**
- * scraper.js — Jackpots Paris
- * Utilise l'API Google Gemini (gratuite) pour scraper les jackpots
- *
- * Variables d'environnement :
- *   GEMINI_API_KEY=AIza...
- */
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
-require('dotenv').config();
-const fetch = require('node-fetch');
-const fs    = require('fs');
-const path  = require('path');
+const DATA_DIR = process.env.DATA_DIR || '.';
 
-const DATA_DIR  = process.env.DATA_DIR || '.';
-const DATA_FILE = path.join(DATA_DIR, 'latest.json');
+// ─── Configuration des 5 clubs ────────────────────────────────────────────────
 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-const CLUBS = [
+const clubs = [
   {
     id: 'imperial',
     name: 'Imperial Club Paris',
-    prompt: `Fetch https://imperialclubparis.com/ and extract the current jackpot amounts displayed on the page.
-Return ONLY a JSON object (no markdown, no explanation):
-{"blackjack_minor": "...", "blackjack_major": "...", "ultimate": "..."}
-Use null if a value is not visible. Include the euro sign and spaces (e.g. "3 104 euros").`
+    url: 'https://imperialclubparis.com/',
+    waitMs: 2000,
+    extract: async (page) => {
+      await page.waitForTimeout(2000);
+      return await page.evaluate(() => {
+        let blackjack_minor = null;
+        let blackjack_major = null;
+        let ultimate = null;
+
+        document.querySelectorAll('*').forEach(el => {
+          const text = el.textContent.trim();
+          if (!text || el.children.length > 10) return;
+
+          if (text.includes('MINOR') && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack_minor = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if (text.includes('MAJOR') && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack_major = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if ((text.includes('Ultimate') || text.includes('ULTIMATE')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) ultimate = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+        });
+
+        return { blackjack_minor, blackjack_major, ultimate };
+      });
+    }
   },
+
   {
     id: 'barriere',
-    name: 'Club Barriere Paris',
-    prompt: `Fetch https://www.casinosbarriere.com/paris and extract the current jackpot amounts.
-The page has a carousel alternating Blackjack and Ultimate Poker jackpots - BOTH values are present in the HTML simultaneously.
-Look carefully for ALL jackpot amounts including those in hidden carousel slides.
-Return ONLY a JSON object (no markdown, no explanation):
-{"blackjack": "...", "ultimate": "..."}
-Use null if a value is truly absent. Include the euro sign (e.g. "48 344 euros").`
+    name: 'Club Barrière Paris',
+    url: 'https://www.casinosbarriere.com/paris',
+    waitMs: 6000,
+    extract: async (page) => {
+      // Le carousel alterne toutes les 5s → attendre jusqu'à 12s pour capturer les 2 jackpots
+      await page.waitForTimeout(6000);
+
+      const first = await page.evaluate(() => {
+        let blackjack = null;
+        let ultimate = null;
+
+        document.querySelectorAll('*').forEach(el => {
+          const text = el.textContent.trim();
+          if (!text || el.children.length > 10) return;
+
+          if ((text.includes('Blackjack') || text.includes('BLACKJACK')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if ((text.includes('Ultimate') || text.includes('ULTIMATE') || text.includes('UTH') || text.includes('Poker')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) ultimate = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+        });
+        return { blackjack, ultimate };
+      });
+
+      // Si un jackpot manque, attendre le prochain slide du carousel
+      if (!first.blackjack || !first.ultimate) {
+        await page.waitForTimeout(6000);
+        const second = await page.evaluate(() => {
+          let blackjack = null;
+          let ultimate = null;
+          document.querySelectorAll('*').forEach(el => {
+            const text = el.textContent.trim();
+            if (!text || el.children.length > 10) return;
+            if ((text.includes('Blackjack') || text.includes('BLACKJACK')) && text.match(/\d[\d\s.,]*\s*€/)) {
+              const match = text.match(/(\d[\d\s.,]*)\s*€/);
+              if (match) blackjack = match[1].trim().replace(/\s+/g, ' ') + ' €';
+            }
+            if ((text.includes('Ultimate') || text.includes('ULTIMATE') || text.includes('UTH') || text.includes('Poker')) && text.match(/\d[\d\s.,]*\s*€/)) {
+              const match = text.match(/(\d[\d\s.,]*)\s*€/);
+              if (match) ultimate = match[1].trim().replace(/\s+/g, ' ') + ' €';
+            }
+          });
+          return { blackjack, ultimate };
+        });
+        return {
+          blackjack: first.blackjack || second.blackjack,
+          ultimate: first.ultimate || second.ultimate
+        };
+      }
+
+      return first;
+    }
   },
+
   {
-    id: 'elysees',
-    name: 'Paris Elysees Club',
-    prompt: `Fetch https://www.pariselyseesclub.com/ and extract the current progressive jackpot amounts for Blackjack and Ultimate Poker.
-Return ONLY a JSON object (no markdown, no explanation):
-{"blackjack": "...", "ultimate": "..."}
-Use null if a value is not visible. Include the euro sign.`
+    id: 'elyseesclub',
+    name: 'Paris Élysées Club',
+    url: 'https://www.pariselyseesclub.com/',
+    waitMs: 3000,
+    extract: async (page) => {
+      await page.waitForTimeout(3000);
+      return await page.evaluate(() => {
+        let blackjack = null;
+        let ultimate = null;
+
+        document.querySelectorAll('*').forEach(el => {
+          const text = el.textContent.trim();
+          if (!text || el.children.length > 10) return;
+
+          if ((text.includes('Blackjack') || text.includes('BLACKJACK') || text.includes('BJ')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if ((text.includes('Ultimate') || text.includes('ULTIMATE') || text.includes('UTH') || text.includes('Poker')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) ultimate = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+        });
+
+        return { blackjack, ultimate };
+      });
+    }
   },
+
   {
     id: 'circus',
     name: 'Club Circus Paris',
-    prompt: `Fetch https://www.circuscasino.fr/fr/casinos/paris/ and find jackpot amounts for UTH Progressive (Ultimate Poker) and Blazing Blackjack.
-Return ONLY a JSON object (no markdown, no explanation):
-{"blackjack": "...", "ultimate": "..."}
-Use null if no amount is visible. Include the euro sign.`
+    url: 'https://www.circuscasino.fr/fr/casinos/paris/',
+    waitMs: 4000,
+    extract: async (page) => {
+      // Site JS dynamique — attendre le rendu
+      await page.waitForTimeout(4000);
+      return await page.evaluate(() => {
+        let blazing_blackjack = null;
+        let uth_progressive = null;
+
+        document.querySelectorAll('*').forEach(el => {
+          const text = el.textContent.trim();
+          if (!text || el.children.length > 10) return;
+
+          if ((text.includes('Blazing') || text.includes('BLAZING') || text.includes('Blackjack')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blazing_blackjack = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if ((text.includes('UTH') || text.includes('Progressive') || text.includes('Ultimate') || text.includes('PROGRESSIVE')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) uth_progressive = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+        });
+
+        return { blazing_blackjack, uth_progressive };
+      });
+    }
   },
+
   {
     id: 'pierrecharron',
     name: 'Club Pierre Charron',
-    prompt: `Fetch https://www.clubpierrecharron.com/ and extract the current progressive jackpot amounts for Blackjack (Minor and Major) and Ultimate Poker.
-Return ONLY a JSON object (no markdown, no explanation):
-{"blackjack_minor": "...", "blackjack_major": "...", "ultimate": "..."}
-Use null if a value is not visible. Include the euro sign (e.g. "4 230 euros").`
+    url: 'https://www.clubpierrecharron.com/',
+    waitMs: 5000,
+    extract: async (page) => {
+      // Widget JS en bas à droite — attendre le rendu complet
+      await page.waitForTimeout(5000);
+      return await page.evaluate(() => {
+        let blackjack_minor = null;
+        let blackjack_major = null;
+        let ultimate = null;
+
+        document.querySelectorAll('*').forEach(el => {
+          const text = el.textContent.trim();
+          if (!text || el.children.length > 10) return;
+
+          if (text.includes('MINOR') && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack_minor = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if (text.includes('MAJOR') && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) blackjack_major = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+          if ((text.includes('Ultimate') || text.includes('ULTIMATE')) && text.match(/\d[\d\s.,]*\s*€/)) {
+            const match = text.match(/(\d[\d\s.,]*)\s*€/);
+            if (match) ultimate = match[1].trim().replace(/\s+/g, ' ') + ' €';
+          }
+        });
+
+        return { blackjack_minor, blackjack_major, ultimate };
+      });
+    }
   }
 ];
 
-async function fetchJackpotForClub(club) {
-  const res = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tools: [{ url_context: {} }, { google_search: {} }],
-      contents: [{
-        parts: [{ text: club.prompt }]
-      }],
-      generationConfig: {
-        temperature: 0,
-        maxOutputTokens: 400
+// ─── Scraper principal ────────────────────────────────────────────────────────
+
+async function scrapeClub(browser, club) {
+  const page = await browser.newPage();
+
+  try {
+    // User-Agent réaliste pour éviter les blocages
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    );
+
+    // Bloquer images/fonts pour accélérer le chargement
+    await page.setRequestInterception(true);
+    page.on('request', req => {
+      const type = req.resourceType();
+      if (['image', 'font', 'media'].includes(type)) {
+        req.abort();
+      } else {
+        req.continue();
       }
-    })
-  });
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `HTTP ${res.status}`);
+    console.log(`  → Visite : ${club.url}`);
+    await page.goto(club.url, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
+    });
+
+    const data = await club.extract(page);
+    console.log(`  ✓ ${club.name} :`, JSON.stringify(data));
+    return { ok: true, data };
+
+  } catch (err) {
+    console.error(`  ✗ ${club.name} : ${err.message}`);
+    return { ok: false, error: err.message, data: {} };
+  } finally {
+    await page.close();
   }
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/gi, '').trim();
-  return JSON.parse(clean);
 }
 
 async function main() {
-  const ts      = new Date().toISOString();
+  console.log('🎰  Jackpots Paris — début du scraping');
+  console.log(`    ${new Date().toISOString()}\n`);
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ]
+  });
+
   const results = {};
 
-  console.log(`[${ts}] Scraping des jackpots avec Gemini...`);
+  for (const club of clubs) {
+    console.log(`\n[${club.id}] ${club.name}`);
+    results[club.id] = await scrapeClub(browser, club);
+  }
 
-  await Promise.allSettled(
-    CLUBS.map(async (club) => {
-      try {
-        const data = await fetchJackpotForClub(club);
-        results[club.id] = { ok: true, data };
-        console.log(`  OK ${club.name}`, JSON.stringify(data));
-      } catch (e) {
-        results[club.id] = { ok: false, error: e.message };
-        console.error(`  ERREUR ${club.name}: ${e.message}`);
-      }
-    })
-  );
+  await browser.close();
 
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ ts, results }, null, 2));
+  // Sauvegarder latest.json
+  const output = {
+    ts: new Date().toISOString(),
+    results
+  };
 
-  console.log(`[${ts}] latest.json mis a jour.`);
+  const outPath = path.join(DATA_DIR, 'latest.json');
+  fs.writeFileSync(outPath, JSON.stringify(output, null, 2), 'utf-8');
+
+  console.log(`\n✅  latest.json sauvegardé → ${outPath}`);
+  console.log(JSON.stringify(output, null, 2));
 }
 
-main().catch(e => {
-  console.error('Erreur fatale:', e);
+main().catch(err => {
+  console.error('Erreur fatale :', err);
   process.exit(1);
 });

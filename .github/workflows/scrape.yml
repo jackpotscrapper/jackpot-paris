@@ -2,8 +2,8 @@ name: Scrape Jackpots
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 */2 * * *'   # Toutes les 2h (économise les minutes gratuites)
+  workflow_dispatch:          # Bouton "Run workflow" manuel dans l'interface GitHub
 
 jobs:
   scrape:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-      - name: Installation de Node.js
+      - name: Installation de Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -23,7 +23,6 @@ jobs:
 
       - name: Lancement du scraping
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           DATA_DIR: '.'
         run: node scraper.js
 
@@ -32,5 +31,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add latest.json
-          git diff --staged --quiet || git commit -m "snapshot $(date -u +'%Y-%m-%d %H:%M')"
+          git diff --staged --quiet || git commit -m "snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push

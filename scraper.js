@@ -3,271 +3,229 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '.';
-
-// page.waitForTimeout supprimé dans Puppeteer v23+
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
 
-// Convertit "1 203 €" / "1.203 €" / "1,203 €" en nombre entier
-const toNum = (str) =>
-  parseInt(str.replace(/[^\d]/g, ''), 10) || 0;
-
-// Extrait le plus grand montant >= minVal trouvé dans un bloc de texte
-const bestMatch = (text, minVal = 1000) => {
-  const matches = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
+// Extrait le plus grand montant >= min dans un texte
+const bestAmount = (text, min = 500) => {
+  const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
   let best = null;
-  for (const m of matches) {
-    const candidate = m[1].trim().replace(/\s+/g, ' ') + ' €';
-    if (toNum(candidate) >= minVal && (!best || toNum(candidate) > toNum(best)))
-      best = candidate;
+  for (const m of ms) {
+    const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
   }
   return best;
 };
 
-// ─── Configuration des 5 clubs ────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Stratégie carousel : on prend N snapshots espacés dans le temps et on
+// associe chaque snapshot au label visible à cet instant.
+// On collecte ainsi tous les jackpots même s'ils ne sont jamais tous
+// affichés en même temps.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Prend des snapshots réguliers pendant `totalMs` ms (toutes les `intervalMs` ms)
+ * et appelle `snapshotFn(page)` → { label, amount } | null à chaque fois.
+ * Retourne un objet { labelA: montant, labelB: montant, ... }
+ */
+async function carouselCapture(page, snapshotFn, totalMs = 20000, intervalMs = 800) {
+  const collected = {};
+  const deadline = Date.now() + totalMs;
+  while (Date.now() < deadline) {
+    const snap = await snapshotFn(page);
+    if (snap && snap.label && snap.amount) {
+      // Garder le plus grand montant vu pour chaque label
+      if (!collected[snap.label] || toNum(snap.amount) > toNum(collected[snap.label])) {
+        collected[snap.label] = snap.amount;
+      }
+    }
+    await sleep(intervalMs);
+  }
+  return collected;
+}
+
+// ─── 1. Imperial Club Paris ───────────────────────────────────────────────────
+// Le carousel affiche : label (MINOR / MAJOR / ULTIMATE) + montant
+// On lit le label visible et le montant visible à chaque tick
+const imperialSnapshot = async (page) => page.evaluate(() => {
+  // Cherche un élément feuille qui contient UN seul mot-clé jackpot + UN montant
+  let label = null;
+  let amount = null;
+  const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length > 2) return;
+    const t = el.textContent.trim();
+    if (!t) return;
+    const hasAmount = t.match(/\d[\d\s.,]*\s*€/);
+    if (!hasAmount) return;
+    const amt = toNum(hasAmount[0]);
+    if (amt < 500) return;
+
+    if (t.includes('MINOR'))    label = 'blackjack_minor';
+    else if (t.includes('MAJOR')) label = 'blackjack_major';
+    else if (t.includes('Ultimate') || t.includes('ULTIMATE')) label = 'ultimate';
+
+    if (label) {
+      const m = t.match(/(\d[\d\s.,]*)\s*€/);
+      if (m) amount = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    }
+  });
+  return label && amount ? { label, amount } : null;
+});
+
+// ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
+const barriereSnapshot = async (page) => page.evaluate(() => {
+  let label = null;
+  let amount = null;
+  const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length > 2) return;
+    const t = el.textContent.trim();
+    if (!t) return;
+    const hasAmount = t.match(/\d[\d\s.,]*\s*€/);
+    if (!hasAmount) return;
+    const amt = toNum(hasAmount[0]);
+    if (amt < 1000) return;
+
+    if (t.includes('Blackjack') || t.includes('BLACKJACK')) label = 'blackjack';
+    else if (t.includes('Ultimate') || t.includes('ULTIMATE') || t.includes('UTH')) label = 'ultimate';
+
+    if (label) {
+      const m = t.match(/(\d[\d\s.,]*)\s*€/);
+      if (m) amount = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    }
+  });
+  return label && amount ? { label, amount } : null;
+});
+
+// ─── 3. Paris Élysées Club ────────────────────────────────────────────────────
+const elyseesSnapshot = async (page) => page.evaluate(() => {
+  let label = null;
+  let amount = null;
+  const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length > 2) return;
+    const t = el.textContent.trim();
+    if (!t) return;
+    const hasAmount = t.match(/\d[\d\s.,]*\s*€/);
+    if (!hasAmount) return;
+    const amt = toNum(hasAmount[0]);
+    if (amt < 1000) return;
+
+    if (t.includes('Blackjack') || t.includes('BLACKJACK') || t.includes('BJ')) label = 'blackjack';
+    else if (t.includes('Ultimate') || t.includes('ULTIMATE') || t.includes('UTH')) label = 'ultimate';
+
+    if (label) {
+      const m = t.match(/(\d[\d\s.,]*)\s*€/);
+      if (m) amount = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    }
+  });
+  return label && amount ? { label, amount } : null;
+});
+
+// ─── 4. Club Circus Paris ─────────────────────────────────────────────────────
+const circusSnapshot = async (page) => page.evaluate(() => {
+  let label = null;
+  let amount = null;
+  const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length > 2) return;
+    const t = el.textContent.trim();
+    if (!t) return;
+    const hasAmount = t.match(/\d[\d\s.,]*\s*€/);
+    if (!hasAmount) return;
+    const amt = toNum(hasAmount[0]);
+    if (amt < 5000) return; // mises min à ~20 €, vrais jackpots > 5 000 €
+
+    if (t.includes('Blazing') || t.includes('BLAZING') ||
+        t.includes('Blackjack') || t.includes('BLACKJACK')) label = 'blazing_blackjack';
+    else if (t.includes('UTH') || t.includes('Progressive') ||
+             t.includes('Ultimate') || t.includes('PROGRESSIVE')) label = 'uth_progressive';
+
+    if (label) {
+      const m = t.match(/(\d[\d\s.,]*)\s*€/);
+      if (m) amount = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    }
+  });
+  return label && amount ? { label, amount } : null;
+});
+
+// ─── 5. Club Pierre Charron ───────────────────────────────────────────────────
+const pierreCharronSnapshot = async (page) => page.evaluate(() => {
+  let label = null;
+  let amount = null;
+  const toNum = (s) => parseInt((s || '').replace(/[^\d]/g, ''), 10) || 0;
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length > 2) return;
+    const t = el.textContent.trim();
+    if (!t) return;
+    const hasAmount = t.match(/\d[\d\s.,]*\s*€/);
+    if (!hasAmount) return;
+    const amt = toNum(hasAmount[0]);
+    if (amt < 100) return;
+
+    // Tester MAJOR avant MINOR pour éviter le faux-match "MAJOR" dans un bloc "MINOR+MAJOR"
+    if      (t.includes('MAJOR') && !t.includes('MINOR') && !t.includes('Ultimate')) label = 'blackjack_major';
+    else if (t.includes('MINOR') && !t.includes('MAJOR') && !t.includes('Ultimate')) label = 'blackjack_minor';
+    else if ((t.includes('Ultimate') || t.includes('ULTIMATE')) && !t.includes('MINOR') && !t.includes('MAJOR')) label = 'ultimate';
+
+    if (label) {
+      const m = t.match(/(\d[\d\s.,]*)\s*€/);
+      if (m) amount = m[1].trim().replace(/\s+/g, ' ') + ' €';
+    }
+  });
+  return label && amount ? { label, amount } : null;
+});
+
+// ─── Configuration des clubs ──────────────────────────────────────────────────
 
 const clubs = [
-  // ── 1. Imperial Club Paris ────────────────────────────────────────────────
   {
     id: 'imperial',
     name: 'Imperial Club Paris',
     url: 'https://imperialclubparis.com/',
-    extract: async (page) => {
-      await sleep(2000);
-      return await page.evaluate(() => {
-        const toNum = (s) => parseInt(s.replace(/[^\d]/g, ''), 10) || 0;
-        const bestMatch = (text, min = 1000) => {
-          const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
-          let best = null;
-          for (const m of ms) {
-            const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
-            if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
-          }
-          return best;
-        };
-
-        let blackjack_minor = null;
-        let blackjack_major = null;
-        let ultimate = null;
-
-        document.querySelectorAll('*').forEach(el => {
-          const text = el.textContent.trim();
-          if (!text || el.children.length > 10) return;
-
-          if (text.includes('MINOR')) {
-            const v = bestMatch(text, 100);
-            if (v && (!blackjack_minor || toNum(v) > toNum(blackjack_minor))) blackjack_minor = v;
-          }
-          if (text.includes('MAJOR')) {
-            const v = bestMatch(text, 100);
-            if (v && (!blackjack_major || toNum(v) > toNum(blackjack_major))) blackjack_major = v;
-          }
-          if (text.includes('Ultimate') || text.includes('ULTIMATE')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!ultimate || toNum(v) > toNum(ultimate))) ultimate = v;
-          }
-        });
-
-        return { blackjack_minor, blackjack_major, ultimate };
-      });
-    }
+    snapshotFn: imperialSnapshot,
+    waitBefore: 2000,
+    captureMs: 22000, // ~2-3 cycles de carousel
   },
-
-  // ── 2. Club Barrière Paris ────────────────────────────────────────────────
-  // Problème : "6 000 €" est une limite de table, le vrai jackpot BJ est > 10 000 €
   {
     id: 'barriere',
     name: 'Club Barrière Paris',
     url: 'https://www.casinosbarriere.com/paris',
-    extract: async (page) => {
-      await sleep(6000);
-
-      const grab = () => page.evaluate(() => {
-        const toNum = (s) => parseInt(s.replace(/[^\d]/g, ''), 10) || 0;
-        const bestMatch = (text, min) => {
-          const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
-          let best = null;
-          for (const m of ms) {
-            const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
-            if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
-          }
-          return best;
-        };
-
-        let blackjack = null;
-        let ultimate = null;
-
-        document.querySelectorAll('*').forEach(el => {
-          const text = el.textContent.trim();
-          if (!text || el.children.length > 10) return;
-
-          // Seuil 10 000 € pour BJ (élimine les limites de table ~6 000 €)
-          if (text.includes('Blackjack') || text.includes('BLACKJACK')) {
-            const v = bestMatch(text, 10000);
-            if (v && (!blackjack || toNum(v) > toNum(blackjack))) blackjack = v;
-          }
-          if (text.includes('Ultimate') || text.includes('ULTIMATE') || text.includes('UTH')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!ultimate || toNum(v) > toNum(ultimate))) ultimate = v;
-          }
-        });
-
-        return { blackjack, ultimate };
-      });
-
-      const first = await grab();
-
-      // Carousel : attendre le 2e slide si un jackpot manque
-      if (!first.blackjack || !first.ultimate) {
-        await sleep(6000);
-        const second = await grab();
-        return {
-          blackjack: first.blackjack || second.blackjack,
-          ultimate:  first.ultimate  || second.ultimate
-        };
-      }
-
-      return first;
-    }
+    snapshotFn: barriereSnapshot,
+    waitBefore: 4000,
+    captureMs: 18000,
   },
-
-  // ── 3. Paris Élysées Club ─────────────────────────────────────────────────
   {
     id: 'elyseesclub',
     name: 'Paris Élysées Club',
     url: 'https://www.pariselyseesclub.com/',
-    extract: async (page) => {
-      await sleep(3000);
-      return await page.evaluate(() => {
-        const toNum = (s) => parseInt(s.replace(/[^\d]/g, ''), 10) || 0;
-        const bestMatch = (text, min = 1000) => {
-          const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
-          let best = null;
-          for (const m of ms) {
-            const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
-            if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
-          }
-          return best;
-        };
-
-        let blackjack = null;
-        let ultimate = null;
-
-        document.querySelectorAll('*').forEach(el => {
-          const text = el.textContent.trim();
-          if (!text || el.children.length > 10) return;
-
-          if (text.includes('Blackjack') || text.includes('BLACKJACK') || text.includes('BJ')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!blackjack || toNum(v) > toNum(blackjack))) blackjack = v;
-          }
-          if (text.includes('Ultimate') || text.includes('ULTIMATE') || text.includes('UTH')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!ultimate || toNum(v) > toNum(ultimate))) ultimate = v;
-          }
-        });
-
-        return { blackjack, ultimate };
-      });
-    }
+    snapshotFn: elyseesSnapshot,
+    waitBefore: 3000,
+    captureMs: 18000,
   },
-
-  // ── 4. Club Circus Paris ──────────────────────────────────────────────────
-  // Problème : "20 €" = mise minimum — seuil monté à 5 000 €
   {
     id: 'circus',
     name: 'Club Circus Paris',
     url: 'https://www.circuscasino.fr/fr/casinos/paris/',
-    extract: async (page) => {
-      await sleep(5000);
-      return await page.evaluate(() => {
-        const toNum = (s) => parseInt(s.replace(/[^\d]/g, ''), 10) || 0;
-        const bestMatch = (text, min = 5000) => {
-          const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
-          let best = null;
-          for (const m of ms) {
-            const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
-            if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
-          }
-          return best;
-        };
-
-        let blazing_blackjack = null;
-        let uth_progressive = null;
-
-        document.querySelectorAll('*').forEach(el => {
-          const text = el.textContent.trim();
-          if (!text || el.children.length > 10) return;
-
-          if (text.includes('Blazing') || text.includes('BLAZING') ||
-              text.includes('Blackjack') || text.includes('BLACKJACK')) {
-            const v = bestMatch(text, 5000);
-            if (v && (!blazing_blackjack || toNum(v) > toNum(blazing_blackjack))) blazing_blackjack = v;
-          }
-          if (text.includes('UTH') || text.includes('Progressive') ||
-              text.includes('Ultimate') || text.includes('PROGRESSIVE')) {
-            const v = bestMatch(text, 5000);
-            if (v && (!uth_progressive || toNum(v) > toNum(uth_progressive))) uth_progressive = v;
-          }
-        });
-
-        return { blazing_blackjack, uth_progressive };
-      });
-    }
+    snapshotFn: circusSnapshot,
+    waitBefore: 4000,
+    captureMs: 22000,
   },
-
-  // ── 5. Club Pierre Charron ────────────────────────────────────────────────
-  // Problème : MAJOR contient MINOR dans le texte, et les montants se croisent
-  // Solution : tester MAJOR avant MINOR, et chercher le mot-clé dans un périmètre
-  // de texte restreint (élément feuille ou quasi-feuille)
   {
     id: 'pierrecharron',
     name: 'Club Pierre Charron',
     url: 'https://www.clubpierrecharron.com/',
-    extract: async (page) => {
-      await sleep(5000);
-      return await page.evaluate(() => {
-        const toNum = (s) => parseInt(s.replace(/[^\d]/g, ''), 10) || 0;
-        const bestMatch = (text, min = 1000) => {
-          const ms = [...text.matchAll(/(\d[\d\s.,]*)\s*€/g)];
-          let best = null;
-          for (const m of ms) {
-            const c = m[1].trim().replace(/\s+/g, ' ') + ' €';
-            if (toNum(c) >= min && (!best || toNum(c) > toNum(best))) best = c;
-          }
-          return best;
-        };
-
-        let blackjack_minor = null;
-        let blackjack_major = null;
-        let ultimate = null;
-
-        // Cibler uniquement les éléments feuilles ou quasi-feuilles (peu d'enfants)
-        // pour éviter que les blocs parents "contiennent" plusieurs jackpots à la fois
-        document.querySelectorAll('*').forEach(el => {
-          const text = el.textContent.trim();
-          if (!text || el.children.length > 3) return; // plus strict : max 3 enfants
-
-          // MAJOR d'abord (évite qu'un bloc "MAJOR ... MINOR" matche les deux)
-          if (text.includes('MAJOR') && !text.includes('MINOR')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!blackjack_major || toNum(v) > toNum(blackjack_major))) blackjack_major = v;
-          }
-          // MINOR uniquement si pas de MAJOR dans le même bloc
-          if (text.includes('MINOR') && !text.includes('MAJOR')) {
-            const v = bestMatch(text, 100);
-            if (v && (!blackjack_minor || toNum(v) > toNum(blackjack_minor))) blackjack_minor = v;
-          }
-          if ((text.includes('Ultimate') || text.includes('ULTIMATE')) &&
-              !text.includes('MINOR') && !text.includes('MAJOR')) {
-            const v = bestMatch(text, 1000);
-            if (v && (!ultimate || toNum(v) > toNum(ultimate))) ultimate = v;
-          }
-        });
-
-        return { blackjack_minor, blackjack_major, ultimate };
-      });
-    }
-  }
+    snapshotFn: pierreCharronSnapshot,
+    waitBefore: 5000,
+    captureMs: 22000,
+  },
 ];
 
 // ─── Scraper principal ────────────────────────────────────────────────────────
@@ -288,7 +246,13 @@ async function scrapeClub(browser, club) {
     console.log(`  → Visite : ${club.url}`);
     await page.goto(club.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    const data = await club.extract(page);
+    // Attendre le rendu initial
+    await sleep(club.waitBefore);
+
+    // Capturer le carousel sur la durée
+    console.log(`  ⏱  Capture carousel pendant ${club.captureMs / 1000}s…`);
+    const data = await carouselCapture(page, club.snapshotFn, club.captureMs, 800);
+
     console.log(`  ✓ ${club.name} :`, JSON.stringify(data));
     return { ok: true, data };
 

@@ -1,4 +1,30 @@
 {
-  "ts": null,
-  "results": {}
+  "ts": "2026-05-19T20:48:28.534Z",
+  "results": {
+    "imperial": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
+    },
+    "barriere": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
+    },
+    "elyseesclub": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
+    },
+    "circus": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
+    },
+    "pierrecharron": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
+    }
+  }
 }

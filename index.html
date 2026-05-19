@@ -1,890 +1,470 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jackpots Paris — Historique</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jackpots Paris — Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --gold: #c9a84c;
-      --gold-light: #e8c96e;
-      --gold-dim: #4a3e20;
-      --bg: #07070a;
-      --surface: #0e0e13;
-      --surface2: #15151c;
-      --surface3: #1c1c26;
-      --text: #ede7d3;
-      --text-mid: #a89e86;
-      --text-dim: #5a5448;
-      --green: #3ddc84;
-      --blue: #5b9cf6;
-      --red: #ff6b6b;
-      --orange: #f5a623;
+      --gold:       #c9a84c;
+      --gold-light: #f0d080;
+      --gold-dim:   #7a5e20;
+      --bg:         #0a0a0a;
+      --surface:    #111111;
+      --surface2:   #191919;
+      --border:     #2a2a2a;
+      --green:      #2ecc71;
+      --red:        #e74c3c;
+      --text:       #e8e0cc;
+      --muted:      #5a5040;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: 'DM Mono', monospace;
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* Grain overlay */
-    body::after {
+    /* ── Bruit de fond ── */
+    body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
       pointer-events: none;
-      z-index: 9999;
-      opacity: 0.4;
+      z-index: 0;
     }
 
     /* ── Header ── */
     header {
-      padding: 40px 48px 28px;
-      border-bottom: 1px solid rgba(201,168,76,0.12);
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      flex-wrap: wrap;
-      gap: 20px;
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 3rem 2rem 2rem;
+      border-bottom: 1px solid var(--border);
     }
 
-    .brand h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(24px, 4vw, 44px);
-      font-weight: 900;
-      color: var(--gold);
-      letter-spacing: -0.02em;
-      line-height: 1;
-    }
-
-    .brand p {
-      font-size: 10px;
-      letter-spacing: 0.35em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      margin-top: 6px;
-    }
-
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-    }
-
-    .live-badge {
+    .header-deco {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--green);
+      justify-content: center;
+      gap: 1.2rem;
+      margin-bottom: .6rem;
     }
 
-    .pulse-dot {
+    .deco-line {
+      flex: 1;
+      max-width: 140px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold));
+    }
+    .deco-line.right {
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+
+    .diamond {
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: var(--gold-light);
+      text-shadow: 0 0 40px rgba(201,168,76,.25);
+    }
+
+    .subtitle {
+      font-size: .7rem;
+      letter-spacing: .25em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: .4rem;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1.2rem;
+      font-size: .65rem;
+      letter-spacing: .12em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .25rem .75rem;
+      border: 1px solid var(--green);
+      color: var(--green);
+      border-radius: 2px;
+      font-size: .6rem;
+      letter-spacing: .2em;
+    }
+
+    .badge-live::before {
+      content: '';
       width: 6px; height: 6px;
       background: var(--green);
       border-radius: 50%;
-      animation: pulse 2s infinite;
+      animation: pulse 1.5s ease-in-out infinite;
     }
 
     @keyframes pulse {
-      0%,100% { opacity:1; transform:scale(1); }
-      50%      { opacity:0.3; transform:scale(0.6); }
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.7); }
     }
 
-    .next-scrape {
-      font-size: 10px;
-      color: var(--text-dim);
-      letter-spacing: 0.08em;
+    #last-update {
+      color: var(--muted);
+      font-size: .6rem;
     }
 
-    .btn {
-      background: none;
-      border: 1px solid var(--gold-dim);
-      color: var(--gold);
-      padding: 7px 14px;
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.07); }
-    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* ── Nav tabs ── */
-    .tabs {
-      display: flex;
-      gap: 0;
-      padding: 0 48px;
-      border-bottom: 1px solid rgba(201,168,76,0.08);
-      overflow-x: auto;
-    }
-
-    .tab {
-      padding: 14px 20px;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
-      background: none;
-      border-top: none;
-      border-left: none;
-      border-right: none;
-      font-family: 'DM Mono', monospace;
-    }
-
-    .tab:hover { color: var(--text-mid); }
-    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
-
-    /* ── Main layout ── */
-    main { padding: 36px 48px; max-width: 1400px; margin: 0 auto; }
-
-    /* ── Section: Snapshot actuel ── */
-    .section-title {
-      font-size: 9px;
-      letter-spacing: 0.4em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .section-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: rgba(201,168,76,0.1);
-    }
-
-    /* ── Cards grille ── */
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 2px;
-      margin-bottom: 48px;
-    }
-
-    .club-card {
-      background: var(--surface);
-      border: 1px solid rgba(201,168,76,0.07);
-      padding: 22px 24px 18px;
+    /* ── Grid ── */
+    main {
       position: relative;
-      animation: fadeUp 0.4s ease both;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5px;
+      padding: 1.5px;
+      max-width: 1300px;
+      margin: 2.5rem auto;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.8rem 1.6rem;
+      position: relative;
+      transition: border-color .3s, background .3s;
+      animation: fadeUp .5s ease both;
+    }
+
+    .card:hover {
+      background: var(--surface2);
+      border-color: var(--gold-dim);
     }
 
     @keyframes fadeUp {
-      from { opacity:0; transform:translateY(6px); }
-      to   { opacity:1; transform:translateY(0); }
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    .club-card::before {
+    /* Délais d'entrée en cascade */
+    .card:nth-child(1) { animation-delay: .05s; }
+    .card:nth-child(2) { animation-delay: .10s; }
+    .card:nth-child(3) { animation-delay: .15s; }
+    .card:nth-child(4) { animation-delay: .20s; }
+    .card:nth-child(5) { animation-delay: .25s; }
+
+    /* Coin doré en haut à gauche */
+    .card::before {
       content: '';
       position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .club-card:hover::before { opacity: 1; }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
+      top: -1px; left: -1px;
+      width: 20px; height: 20px;
+      border-top: 2px solid var(--gold);
+      border-left: 2px solid var(--gold);
+      pointer-events: none;
     }
 
     .card-name {
       font-family: 'Playfair Display', serif;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1.2;
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--gold-light);
+      letter-spacing: .04em;
+      margin-bottom: 1.2rem;
+      padding-bottom: .8rem;
+      border-bottom: 1px solid var(--border);
     }
 
-    .card-status {
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border: 1px solid;
-    }
-
-    .status-ok    { color: var(--green); border-color: var(--green); }
-    .status-error { color: var(--red);   border-color: var(--red);   }
-    .status-wait  { color: var(--text-dim); border-color: var(--text-dim); animation: blink 1.5s infinite; }
-
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
+    /* ── Jackpot row ── */
     .jackpot-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-top: 1px solid rgba(255,255,255,0.04);
+      align-items: baseline;
+      padding: .55rem 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
     }
 
-    .jackpot-label {
-      font-size: 10px;
-      letter-spacing: 0.12em;
+    .jackpot-row:last-of-type { border-bottom: none; }
+
+    .jp-label {
+      font-size: .62rem;
+      letter-spacing: .15em;
       text-transform: uppercase;
-      color: var(--text-dim);
+      color: var(--muted);
+    }
+
+    .jp-value {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--gold-light);
+      letter-spacing: .03em;
+      text-align: right;
+    }
+
+    .jp-value.loading {
+      color: var(--border);
+      animation: shimmer 1.4s linear infinite;
+      background: linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .jp-value.null-val {
+      color: var(--muted);
+      font-size: .7rem;
+      letter-spacing: .1em;
+    }
+
+    /* ── Status badge ── */
+    .card-status {
+      margin-top: 1rem;
+      padding-top: .7rem;
+      border-top: 1px solid var(--border);
+      font-size: .58rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: .4rem;
     }
 
-    .game-dot {
+    .status-dot {
       width: 5px; height: 5px;
       border-radius: 50%;
+      flex-shrink: 0;
     }
 
-    .dot-bj { background: var(--blue); }
-    .dot-ul { background: var(--orange); }
+    .status-ok   .status-dot { background: var(--green); }
+    .status-err  .status-dot { background: var(--red); }
+    .status-ok   { color: rgba(46,204,113,.5); }
+    .status-err  { color: rgba(231,76,60,.5); }
 
-    .jackpot-amount {
-      font-size: 20px;
-      font-weight: 500;
-      color: var(--gold);
-      letter-spacing: -0.02em;
-    }
-
-    .jackpot-amount.minor { font-size: 13px; color: var(--text-mid); }
-    .jackpot-amount.null  { font-size: 11px; color: var(--text-dim); font-weight: 300; }
-
-    .dual-amounts { text-align: right; }
-    .dual-amounts .sub { font-size: 9px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
-    .dual-amounts .major { font-size: 18px; color: var(--gold); }
-    .dual-amounts .minor-val { font-size: 12px; color: var(--text-mid); }
-
-    .skeleton {
-      width: 90px; height: 20px;
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-    .card-ts {
-      font-size: 9px;
-      color: var(--text-dim);
-      letter-spacing: 0.05em;
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255,255,255,0.03);
-    }
-
-    /* ── Section historique ── */
-    .history-controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-
-    .select {
-      background: var(--surface);
-      border: 1px solid rgba(201,168,76,0.2);
-      color: var(--text-mid);
-      padding: 7px 12px;
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      cursor: pointer;
-      outline: none;
-    }
-
-    .select:focus { border-color: var(--gold); }
-
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(520px, 1fr));
-      gap: 16px;
-    }
-
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid rgba(201,168,76,0.07);
-      padding: 20px 24px;
-    }
-
-    .chart-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-
-    .chart-subtitle {
-      font-size: 9px;
-      letter-spacing: 0.15em;
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2rem;
+      font-size: .6rem;
+      letter-spacing: .15em;
+      color: var(--muted);
       text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 16px;
+      border-top: 1px solid var(--border);
     }
 
-    .chart-wrap { position: relative; height: 180px; }
-
-    /* ── Section tableau ── */
-    .table-wrap { overflow-x: auto; }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
+    footer a {
+      color: var(--gold-dim);
+      text-decoration: none;
     }
+    footer a:hover { color: var(--gold); }
 
-    thead th {
-      text-align: left;
-      padding: 8px 12px;
-      font-size: 9px;
-      letter-spacing: 0.2em;
+    /* ── Error banner ── */
+    #error-banner {
+      display: none;
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 1rem auto 0;
+      padding: .8rem 1.5rem;
+      background: rgba(231,76,60,.08);
+      border: 1px solid rgba(231,76,60,.3);
+      color: var(--red);
+      font-size: .65rem;
+      letter-spacing: .12em;
       text-transform: uppercase;
-      color: var(--text-dim);
-      border-bottom: 1px solid rgba(201,168,76,0.1);
-      white-space: nowrap;
-    }
-
-    tbody tr {
-      border-bottom: 1px solid rgba(255,255,255,0.025);
-      transition: background 0.15s;
-    }
-
-    tbody tr:hover { background: rgba(201,168,76,0.03); }
-
-    tbody td {
-      padding: 9px 12px;
-      color: var(--text-mid);
-      white-space: nowrap;
-    }
-
-    tbody td.amount { color: var(--gold); font-weight: 500; }
-    tbody td.null   { color: var(--text-dim); }
-    tbody td.ts     { color: var(--text-dim); font-size: 10px; }
-
-    .page-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 16px;
-      font-size: 10px;
-      color: var(--text-dim);
-    }
-
-    /* ── Tabs content ── */
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px; right: 24px;
-      background: var(--surface2);
-      border: 1px solid rgba(201,168,76,0.2);
-      color: var(--text);
-      padding: 10px 16px;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      z-index: 9998;
-      transform: translateY(60px);
-      opacity: 0;
-      transition: all 0.3s;
-    }
-
-    #toast.show { transform: translateY(0); opacity: 1; }
-
-    /* ── Responsive ── */
-    @media (max-width: 700px) {
-      header, main, .tabs { padding-left: 20px; padding-right: 20px; }
-      .charts-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">
+  <div class="header-deco">
+    <span class="deco-line"></span>
+    <span class="diamond"></span>
     <h1>Jackpots Paris</h1>
-    <p>Suivi des jackpots · Clubs de jeux parisiens</p>
+    <span class="diamond"></span>
+    <span class="deco-line right"></span>
   </div>
-  <div class="header-right">
-    <div class="live-badge"><span class="pulse-dot"></span> Données en direct</div>
-    <div class="next-scrape" id="nextScrape">Prochain snapshot : —</div>
-    <button class="btn" id="scrapeNowBtn" onclick="triggerScrape()">
-      <span id="scrapeIcon">↻</span> Scraper maintenant
-    </button>
+  <p class="subtitle">Clubs de jeux — 5 établissements</p>
+  <div class="header-meta">
+    <span class="badge-live">Live</span>
+    <span id="last-update">Chargement…</span>
   </div>
 </header>
 
-<div class="tabs">
-  <button class="tab active" onclick="switchTab('live')">Snapshot actuel</button>
-  <button class="tab" onclick="switchTab('charts')">Graphiques</button>
-  <button class="tab" onclick="switchTab('table')">Tableau complet</button>
-</div>
+<div id="error-banner">⚠ Impossible de récupérer les données</div>
 
-<main>
-
-  <!-- ── TAB: LIVE ── -->
-  <div class="tab-panel active" id="panel-live">
-    <div class="section-title">Dernier snapshot</div>
-    <div class="cards-grid" id="cardsGrid"></div>
+<main id="grid">
+  <!-- Skeleton pendant le chargement -->
+  <div class="card"><div class="card-name">—</div>
+    <div class="jackpot-row"><span class="jp-label">—</span><span class="jp-value loading">000 000 €</span></div>
+    <div class="card-status status-ok"><span class="status-dot"></span>Chargement</div>
   </div>
-
-  <!-- ── TAB: CHARTS ── -->
-  <div class="tab-panel" id="panel-charts">
-    <div class="history-controls">
-      <div class="section-title" style="margin:0;flex:0 0 auto">Historique</div>
-      <select class="select" id="chartClub" onchange="renderCharts()">
-        <option value="barriere">Club Barrière</option>
-        <option value="imperial">Imperial Club</option>
-        <option value="elysees">Paris Élysées Club</option>
-        <option value="circus">Club Circus</option>
-        <option value="pierrecharron">Club Pierre Charron</option>
-      </select>
-      <select class="select" id="chartRange" onchange="renderCharts()">
-        <option value="24">Dernières 24h</option>
-        <option value="72">3 derniers jours</option>
-        <option value="168">7 derniers jours</option>
-        <option value="720">30 derniers jours</option>
-      </select>
-    </div>
-    <div class="charts-grid" id="chartsGrid"></div>
-  </div>
-
-  <!-- ── TAB: TABLE ── -->
-  <div class="tab-panel" id="panel-table">
-    <div class="history-controls">
-      <div class="section-title" style="margin:0;flex:0 0 auto">Journal</div>
-      <select class="select" id="tableClub" onchange="renderTable(1)">
-        <option value="barriere">Club Barrière</option>
-        <option value="imperial">Imperial Club</option>
-        <option value="elysees">Paris Élysées Club</option>
-        <option value="circus">Club Circus</option>
-        <option value="pierrecharron">Club Pierre Charron</option>
-      </select>
-    </div>
-    <div class="table-wrap">
-      <table id="historyTable">
-        <thead id="tableHead"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-    <div class="page-controls">
-      <span id="tableInfo">—</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="prevBtn" onclick="changePage(-1)">← Préc.</button>
-        <button class="btn" id="nextBtn" onclick="changePage(+1)">Suiv. →</button>
-      </div>
-    </div>
-  </div>
-
 </main>
 
-<div id="toast"></div>
+<footer>
+  Données scrappées toutes les 2h via GitHub Actions &nbsp;·&nbsp;
+  <a href="https://github.com" target="_blank" rel="noopener">GitHub</a> &nbsp;·&nbsp;
+  Jackpots Paris v3.0
+</footer>
 
 <script>
-// ─────────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────────
-const API_BASE = window.location.origin; // Même origine que le serveur Node
-const REFRESH_INTERVAL_MS = 60 * 1000;   // Rafraîchit l'affichage toutes les minutes
-const PAGE_SIZE = 50;
-
-const CLUB_META = {
-  imperial:      { name: 'Imperial Club Paris',    fields: ['blackjack_minor','blackjack_major','ultimate'] },
-  barriere:      { name: 'Club Barrière Paris',    fields: ['blackjack','ultimate'] },
-  elysees:       { name: 'Paris Élysées Club',     fields: ['blackjack','ultimate'] },
-  circus:        { name: 'Club Circus Paris',      fields: ['blackjack','ultimate'] },
-  pierrecharron: { name: 'Club Pierre Charron',    fields: ['blackjack_minor','blackjack_major','ultimate'] },
-};
-
-const FIELD_LABELS = {
-  blackjack:       'Blackjack',
-  blackjack_minor: 'BJ Minor',
-  blackjack_major: 'BJ Major',
-  ultimate:        'Ultimate Poker',
-};
-
-const FIELD_COLORS = {
-  blackjack:       '#5b9cf6',
-  blackjack_minor: '#5b9cf6',
-  blackjack_major: '#a78bfa',
-  ultimate:        '#f5a623',
-};
-
-// ─────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────
-let latest    = null;
-let allHistory = [];
-let tablePage = 1;
-let charts    = {};
-
-// ─────────────────────────────────────────────
-// Init
-// ─────────────────────────────────────────────
-async function init() {
-  await loadLatest();
-  await loadHistory();
-  renderCards();
-  renderCharts();
-  renderTable(1);
-  scheduleRefresh();
-}
-
-// ─────────────────────────────────────────────
-// API calls
-// ─────────────────────────────────────────────
-async function loadLatest() {
-  try {
-    const r = await fetch(`${API_BASE}/api/latest`);
-    latest = await r.json();
-  } catch (e) {
-    showToast('Impossible de joindre le serveur');
-  }
-}
-
-async function loadHistory() {
-  try {
-    const r = await fetch(`${API_BASE}/api/history?limit=2000`);
-    allHistory = await r.json();
-  } catch {}
-}
-
-async function triggerScrape() {
-  const btn  = document.getElementById('scrapeNowBtn');
-  const icon = document.getElementById('scrapeIcon');
-  btn.disabled = true;
-  icon.style.display = 'inline-block';
-  icon.animate([{transform:'rotate(0)'},{transform:'rotate(360deg)'}],
-    {duration:800, iterations:Infinity});
-  showToast('Scraping en cours...');
-
-  try {
-    const r = await fetch(`${API_BASE}/api/scrape`, { method: 'POST' });
-    const d = await r.json();
-    if (d.ok) {
-      latest = d.snapshot;
-      allHistory.push(d.snapshot);
-      renderCards();
-      renderCharts();
-      renderTable(1);
-      showToast('Snapshot enregistré ✓');
+// ── Configuration des clubs (labels d'affichage) ──────────────────────────────
+const CLUBS = {
+  imperial: {
+    name: 'Imperial Club Paris',
+    keys: {
+      blackjack_minor: 'Blackjack Minor',
+      blackjack_major: 'Blackjack Major',
+      ultimate:        'Ultimate Poker'
     }
-  } catch {
-    showToast('Erreur lors du scraping');
-  } finally {
-    btn.disabled = false;
-    icon.getAnimations().forEach(a => a.cancel());
-    icon.style.transform = '';
+  },
+  barriere: {
+    name: 'Club Barrière Paris',
+    keys: {
+      blackjack: 'Blackjack',
+      ultimate:  'Ultimate Poker'
+    }
+  },
+  elyseesclub: {
+    name: 'Paris Élysées Club',
+    keys: {
+      blackjack: 'Blackjack',
+      ultimate:  'Ultimate Poker'
+    }
+  },
+  circus: {
+    name: 'Club Circus Paris',
+    keys: {
+      blazing_blackjack: 'Blazing Blackjack',
+      uth_progressive:   'UTH Progressive'
+    }
+  },
+  pierrecharron: {
+    name: 'Club Pierre Charron',
+    keys: {
+      blackjack_minor: 'Blackjack Minor',
+      blackjack_major: 'Blackjack Major',
+      ultimate:        'Ultimate Poker'
+    }
   }
-}
+};
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-function formatTs(ts) {
-  return new Date(ts).toLocaleString('fr-FR', {
-    day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit'
-  });
-}
-
-function parseAmount(str) {
-  if (!str) return null;
-  const n = parseFloat(str.replace(/\s/g,'').replace(',','.').replace('€',''));
-  return isNaN(n) ? null : n;
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-// ─────────────────────────────────────────────
-// Render: Cards (snapshot actuel)
-// ─────────────────────────────────────────────
-function renderCards() {
-  const grid = document.getElementById('cardsGrid');
-  if (!latest || !latest.ts) {
-    grid.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:20px">
-      Aucun snapshot disponible. Cliquez sur "Scraper maintenant".
-    </div>`;
-    return;
-  }
-
-  grid.innerHTML = Object.entries(CLUB_META).map(([id, meta], i) => {
-    const clubData = latest.results?.[id];
-    const isOk     = clubData?.ok;
-    const data     = clubData?.data || {};
-    const delay    = i * 0.07;
-
-    const statusHtml = !clubData
-      ? `<span class="card-status status-wait">En attente</span>`
-      : isOk
-        ? `<span class="card-status status-ok">OK</span>`
-        : `<span class="card-status status-error">Erreur</span>`;
-
-    const rowsHtml = meta.fields.map(field => {
-      const val = data[field];
-      const isBJ = field.includes('blackjack');
-      return `<div class="jackpot-row">
-        <div class="jackpot-label">
-          <span class="game-dot ${isBJ ? 'dot-bj' : 'dot-ul'}"></span>
-          ${FIELD_LABELS[field]}
-        </div>
-        ${val
-          ? `<span class="jackpot-amount ${field === 'blackjack_minor' ? 'minor' : ''}">${val}</span>`
-          : `<span class="jackpot-amount null">—</span>`
-        }
-      </div>`;
-    }).join('');
-
-    return `<div class="club-card" style="animation-delay:${delay}s">
-      <div class="card-header">
-        <div class="card-name">${meta.name}</div>
-        ${statusHtml}
-      </div>
-      ${isOk ? rowsHtml : `<div style="color:var(--red);font-size:10px;opacity:0.7">${clubData?.error || ''}</div>`}
-      <div class="card-ts">Snapshot : ${formatTs(latest.ts)}</div>
-    </div>`;
-  }).join('');
-}
-
-// ─────────────────────────────────────────────
-// Render: Charts
-// ─────────────────────────────────────────────
-function renderCharts() {
-  const clubId  = document.getElementById('chartClub').value;
-  const hours   = parseInt(document.getElementById('chartRange').value);
-  const meta    = CLUB_META[clubId];
-  const cutoff  = Date.now() - hours * 3600 * 1000;
-
-  const filtered = allHistory.filter(s => new Date(s.ts).getTime() >= cutoff);
-
-  const labels = filtered.map(s =>
-    new Date(s.ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})
-  );
-
-  const grid = document.getElementById('chartsGrid');
+// ── Rendu ──────────────────────────────────────────────────────────────────────
+function render(data) {
+  const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
-  // Destroy old charts
-  Object.values(charts).forEach(c => c.destroy());
-  charts = {};
+  const results = data.results || {};
 
-  meta.fields.forEach(field => {
-    const values = filtered.map(s => {
-      const d = s.results?.[clubId];
-      if (!d?.ok) return null;
-      return parseAmount(d.data?.[field]);
-    });
-
-    const canvasId = `chart-${field}`;
+  Object.entries(CLUBS).forEach(([id, config]) => {
+    const club = results[id] || { ok: false, data: {} };
     const card = document.createElement('div');
-    card.className = 'chart-card';
-    card.innerHTML = `
-      <div class="chart-title">${FIELD_LABELS[field]}</div>
-      <div class="chart-subtitle">${meta.name} · ${hours}h</div>
-      <div class="chart-wrap"><canvas id="${canvasId}"></canvas></div>
-    `;
-    grid.appendChild(card);
+    card.className = 'card';
 
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    charts[canvasId] = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          borderColor: FIELD_COLORS[field],
-          backgroundColor: FIELD_COLORS[field] + '18',
-          borderWidth: 1.5,
-          pointRadius: filtered.length > 50 ? 0 : 3,
-          pointBackgroundColor: FIELD_COLORS[field],
-          tension: 0.3,
-          fill: true,
-          spanGaps: true,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#15151c',
-            borderColor: 'rgba(201,168,76,0.3)',
-            borderWidth: 1,
-            titleColor: '#a89e86',
-            bodyColor: '#c9a84c',
-            bodyFont: { family: 'DM Mono', size: 12 },
-            callbacks: {
-              label: ctx => ctx.raw !== null ? ctx.raw.toLocaleString('fr-FR') + ' €' : '—'
-            }
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: '#5a5448',
-              font: { family: 'DM Mono', size: 9 },
-              maxTicksLimit: 8,
-            },
-            grid: { color: 'rgba(255,255,255,0.03)' }
-          },
-          y: {
-            ticks: {
-              color: '#5a5448',
-              font: { family: 'DM Mono', size: 9 },
-              callback: v => v ? v.toLocaleString('fr-FR') + ' €' : ''
-            },
-            grid: { color: 'rgba(255,255,255,0.04)' }
-          }
-        }
+    // Nom du club
+    const nameEl = document.createElement('div');
+    nameEl.className = 'card-name';
+    nameEl.textContent = config.name;
+    card.appendChild(nameEl);
+
+    // Lignes de jackpot
+    Object.entries(config.keys).forEach(([key, label]) => {
+      const row = document.createElement('div');
+      row.className = 'jackpot-row';
+
+      const lbl = document.createElement('span');
+      lbl.className = 'jp-label';
+      lbl.textContent = label;
+
+      const val = document.createElement('span');
+      const rawVal = club.data?.[key];
+      if (rawVal) {
+        val.className = 'jp-value';
+        val.textContent = rawVal;
+      } else {
+        val.className = 'jp-value null-val';
+        val.textContent = '—';
       }
-    });
-  });
 
-  if (filtered.length === 0) {
-    grid.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:20px">
-      Aucune donnée sur cette période. Effectuez quelques scrapes d'abord.
-    </div>`;
+      row.appendChild(lbl);
+      row.appendChild(val);
+      card.appendChild(row);
+    });
+
+    // Statut
+    const status = document.createElement('div');
+    status.className = `card-status ${club.ok ? 'status-ok' : 'status-err'}`;
+    const dot = document.createElement('span');
+    dot.className = 'status-dot';
+    status.appendChild(dot);
+    status.appendChild(document.createTextNode(club.ok ? 'OK' : (club.error || 'Erreur')));
+    card.appendChild(status);
+
+    grid.appendChild(card);
+  });
+}
+
+// ── Formatage de la date ──────────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return 'données indisponibles';
+  const d = new Date(iso);
+  return d.toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/Paris'
+  }) + ' (Paris)';
+}
+
+// ── Fetch & rafraîchissement ──────────────────────────────────────────────────
+async function fetchLatest() {
+  try {
+    const res = await fetch('/api/latest?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById('error-banner').style.display = 'none';
+    document.getElementById('last-update').textContent =
+      'Dernière mise à jour : ' + formatDate(data.ts);
+
+    render(data);
+  } catch (err) {
+    console.error('Fetch error:', err);
+    document.getElementById('error-banner').style.display = 'block';
+    document.getElementById('last-update').textContent = 'Erreur de chargement';
   }
 }
 
-// ─────────────────────────────────────────────
-// Render: Table
-// ─────────────────────────────────────────────
-function renderTable(page) {
-  tablePage = page;
-  const clubId = document.getElementById('tableClub').value;
-  const meta   = CLUB_META[clubId];
-
-  // Rebuild reversed
-  const rows = [...allHistory].reverse().map(s => ({
-    ts:   s.ts,
-    data: s.results?.[clubId]
-  }));
-
-  const total     = rows.length;
-  const pageCount = Math.ceil(total / PAGE_SIZE);
-  const start     = (page - 1) * PAGE_SIZE;
-  const pageRows  = rows.slice(start, start + PAGE_SIZE);
-
-  // Head
-  document.getElementById('tableHead').innerHTML = `<tr>
-    <th>Date / Heure</th>
-    ${meta.fields.map(f => `<th>${FIELD_LABELS[f]}</th>`).join('')}
-    <th>Statut</th>
-  </tr>`;
-
-  // Body
-  document.getElementById('tableBody').innerHTML = pageRows.map(row => {
-    const d    = row.data;
-    const isOk = d?.ok;
-    const data = d?.data || {};
-
-    const cells = meta.fields.map(f => {
-      const v = data[f];
-      return `<td class="${v ? 'amount' : 'null'}">${v || '—'}</td>`;
-    }).join('');
-
-    return `<tr>
-      <td class="ts">${formatTs(row.ts)}</td>
-      ${cells}
-      <td style="font-size:9px;color:${isOk ? 'var(--green)' : 'var(--red)'}">${isOk ? 'OK' : (d?.error?.slice(0,30) || '—')}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('tableInfo').textContent =
-    `${total} snapshots · Page ${page}/${pageCount || 1}`;
-  document.getElementById('prevBtn').disabled = page <= 1;
-  document.getElementById('nextBtn').disabled = page >= pageCount;
-}
-
-function changePage(delta) {
-  const clubId = document.getElementById('tableClub').value;
-  const meta   = CLUB_META[clubId];
-  const total  = allHistory.length;
-  const pages  = Math.ceil(total / PAGE_SIZE);
-  const next   = Math.max(1, Math.min(pages, tablePage + delta));
-  renderTable(next);
-}
-
-// ─────────────────────────────────────────────
-// Tab switching
-// ─────────────────────────────────────────────
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const names = ['live','charts','table'];
-    t.classList.toggle('active', names[i] === name);
-  });
-  document.querySelectorAll('.tab-panel').forEach(p => {
-    p.classList.toggle('active', p.id === `panel-${name}`);
-  });
-}
-
-// ─────────────────────────────────────────────
-// Auto-refresh
-// ─────────────────────────────────────────────
-function scheduleRefresh() {
-  let countdown = REFRESH_INTERVAL_MS / 1000;
-
-  const tick = setInterval(() => {
-    countdown--;
-    const m = Math.floor(countdown / 60);
-    const s = countdown % 60;
-    document.getElementById('nextScrape').textContent =
-      `Rafraîchissement dans ${m > 0 ? m + 'min ' : ''}${s}s`;
-
-    if (countdown <= 0) {
-      clearInterval(tick);
-      loadLatest().then(() => {
-        loadHistory().then(() => {
-          renderCards();
-          renderCharts();
-          renderTable(tablePage);
-          scheduleRefresh();
-        });
-      });
-    }
-  }, 1000);
-}
-
-// ─────────────────────────────────────────────
-// Start
-// ─────────────────────────────────────────────
-init();
+// Premier chargement + auto-refresh toutes les 60s
+fetchLatest();
+setInterval(fetchLatest, 60_000);
 </script>
 </body>
 </html>

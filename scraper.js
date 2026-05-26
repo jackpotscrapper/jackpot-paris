@@ -57,12 +57,13 @@ async function scrapeBarriere(page) {
     const amt  = clean(amtEl.textContent.trim());
     const name = nameEl.textContent.trim().toLowerCase();
     if (!amt) return null;
+    if (name.includes('blackjack') && name.includes('major')) return { type: 'blackjack_major', amt };
     if (name.includes('blackjack')) return { type: 'blackjack', amt };
     if (name.includes('ultimate') || name.includes('hold')) return { type: 'ultimate', amt };
     return null;
   });
-  const collected = { blackjack: null, ultimate: null };
-  const deadline = Date.now() + 25000;
+  const collected = { blackjack: null, blackjack_major: null, ultimate: null };
+  const deadline = Date.now() + 35000; // plus long pour 3 jackpots
   while (Date.now() < deadline) {
     const snap = await grab().catch(() => null);
     if (snap) collected[snap.type] = snap.amt;
@@ -97,18 +98,44 @@ async function scrapeElysees(page) {
 }
 
 // ─── 4. Club Circus Paris ─────────────────────────────────────────────────────
+// Les compteurs sont animés en continu (centimes inclus) dans la section #intro
+// Format affiché : "33 456,78" ou "19 648,31" (virgule = séparateur décimal)
+// Stratégie : chercher tous les éléments feuilles contenant un nombre avec virgule
+// dans #intro, prendre les 2 plus grands, garder uniquement la partie entière
 async function scrapeCircus(page) {
   await sleep(6000);
   return page.evaluate(() => {
     const intro = document.querySelector('#intro');
     if (!intro) return { blazing_blackjack: null, uth_progressive: null };
-    const allText = intro.innerText || intro.textContent || '';
-    const numbers = [];
-    (allText.match(/\d{4,}/g) || []).forEach(m => {
-      const n = parseInt(m, 10);
-      if (n > 1000 && n < 10000000) numbers.push(n);
+
+    const amounts = [];
+
+    // Parcourir tous les éléments feuilles dans #intro
+    intro.querySelectorAll('*').forEach(el => {
+      if (el.children.length > 0) return; // feuilles uniquement
+      const t = (el.textContent || '').trim();
+      if (!t) return;
+
+      // Format avec virgule décimale : "33 456,78" ou "33456,78" ou "33.456,78"
+      const m = t.match(/^(\d[\d\s.]*),(\d{2})$/);
+      if (m) {
+        const intPart = parseInt(m[1].replace(/[\s.]/g, ''), 10);
+        if (intPart > 1000 && intPart < 10000000) amounts.push(intPart);
+      }
     });
-    const unique = [...new Set(numbers)].sort((a, b) => b - a);
+
+    // Si pas trouvé avec virgule, fallback : grands nombres dans le texte brut
+    if (amounts.length < 2) {
+      const allText = intro.innerText || intro.textContent || '';
+      // Chercher des nombres avec virgule : "33 456,78"
+      const matches = [...allText.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
+      matches.forEach(m => {
+        const n = parseInt(m[1].replace(/[\s.]/g, ''), 10);
+        if (n > 1000 && n < 10000000) amounts.push(n);
+      });
+    }
+
+    const unique = [...new Set(amounts)].sort((a, b) => b - a);
     return {
       uth_progressive:   unique[0] ? unique[0].toLocaleString('fr-FR') + ' €' : null,
       blazing_blackjack: unique[1] ? unique[1].toLocaleString('fr-FR') + ' €' : null,

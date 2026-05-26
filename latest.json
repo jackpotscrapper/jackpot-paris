@@ -1,40 +1,30 @@
 {
-  "ts": "2026-05-25T23:48:22.719Z",
+  "ts": "2026-05-26T15:23:29.122Z",
   "results": {
     "imperial": {
-      "ok": true,
-      "data": {
-        "blackjack_minor": "25.006 €",
-        "blackjack_major": "25.006 €",
-        "ultimate": "25.006 €"
-      }
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
     },
     "barriere": {
-      "ok": true,
-      "data": {
-        "blackjack": "152489 €",
-        "ultimate": "152489 €"
-      }
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
     },
-    "elyseesclub": {
-      "ok": true,
-      "data": {
-        "blackjack": "27 324 €",
-        "ultimate": "27 324 €"
-      }
+    "elyseees": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
     },
     "circus": {
-      "ok": true,
-      "data": {
-        "uth_progressive": "50.000 €",
-        "blazing_blackjack": "50.000 €"
-      }
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
     },
-    "pierrecharron": {
-      "ok": true,
-      "data": {
-        "ultimate": "012.064 €"
-      }
+    "pierre_charron": {
+      "ok": false,
+      "error": "page.waitForTimeout is not a function",
+      "data": {}
     }
   }
 }

@@ -57,11 +57,11 @@ async function scrapeBarriere(page) {
     const amt  = clean(amtEl.textContent.trim());
     const name = nameEl.textContent.trim().toLowerCase();
     if (!amt) return null;
-    // Détecter le type selon le nom affiché
-    if (name.includes('major')) return { type: 'blackjack_major', amt };
-    if (name.includes('blackjack') || name.includes('black jack')) return { type: 'blackjack_minor', amt };
+    // "minor blackjack" → minor, "blackjack" seul → major, "ultimate" → ultimate
+    if (name.includes('minor')) return { type: 'blackjack_minor', amt };
+    if (name.includes('blackjack') || name.includes('black jack')) return { type: 'blackjack_major', amt };
     if (name.includes('ultimate') || name.includes('hold')) return { type: 'ultimate', amt };
-    return { type: 'unknown_' + name.slice(0,20), amt }; // log tout pour debug
+    return { type: 'unknown_' + name.slice(0,20), amt }; // log pour debug
   });
   const collected = { blackjack_minor: null, blackjack_major: null, ultimate: null };
   // Ne jamais s'arrêter tôt : laisser tourner 40s pour voir défiler les 3 jackpots

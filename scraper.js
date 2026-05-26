@@ -22,7 +22,7 @@ const CLUBS = [
     name: 'Imperial Club Paris',
     url: 'https://imperialclubparis.com/',
     extract: async (page) => {
-      await page.waitForTimeout(2500);
+      await new Promise(r => setTimeout(r, 2500));
 
       return await page.evaluate(() => {
         let blackjack_minor = null;
@@ -74,7 +74,7 @@ const CLUBS = [
     name: 'Club Barrière Paris',
     url: 'https://www.casinosbarriere.com/paris',
     extract: async (page) => {
-      await page.waitForTimeout(2000);
+      await new Promise(r => setTimeout(r, 2000));
 
       const result = { blackjack: null, ultimate: null };
       const deadline = Date.now() + 18000; // poll max 18 s (carousel ~5 s)
@@ -100,7 +100,7 @@ const CLUBS = [
         }
 
         if (!result.blackjack || !result.ultimate) {
-          await page.waitForTimeout(3000);
+          await new Promise(r => setTimeout(r, 3000));
         }
       }
 
@@ -115,7 +115,7 @@ const CLUBS = [
     name: 'Paris Élysées Club',
     url: 'https://www.pariselyseesclub.com/',
     extract: async (page) => {
-      await page.waitForTimeout(2000);
+      await new Promise(r => setTimeout(r, 2000));
 
       return await page.evaluate(() => {
         let blackjack = null;
@@ -141,7 +141,7 @@ const CLUBS = [
     url: 'https://www.circuscasino.fr/fr/casinos/paris/',
     extract: async (page) => {
       // Attente fin des compteurs animés
-      await page.waitForTimeout(6000);
+      await new Promise(r => setTimeout(r, 6000));
 
       return await page.evaluate(() => {
         let blazing_blackjack = null;
@@ -177,7 +177,7 @@ const CLUBS = [
     name: 'Club Pierre Charron',
     url: 'https://www.clubpierrecharron.com/',
     extract: async (page) => {
-      await page.waitForTimeout(5000);
+      await new Promise(r => setTimeout(r, 5000));
 
       try {
         await page.waitForSelector('.jackpot-widget-item', { timeout: 8000 });

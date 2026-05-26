@@ -196,6 +196,18 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .card-name a {
+      color: var(--gold-light);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .card-name a:hover {
+      color: var(--gold);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     /* ── Jackpot row ── */
     .jackpot-row {
       display: flex;
@@ -340,6 +352,7 @@
 const CLUBS = {
   imperial: {
     name: 'Imperial Club Paris',
+    url: 'https://imperialclubparis.com/',
     keys: {
       blackjack_minor: 'Blackjack Minor',
       blackjack_major: 'Blackjack Major',
@@ -348,6 +361,7 @@ const CLUBS = {
   },
   barriere: {
     name: 'Club Barrière Paris',
+    url: 'https://www.casinosbarriere.com/paris',
     keys: {
       blackjack_minor: 'Blackjack Minor',
       blackjack_major: 'Blackjack Major',
@@ -356,6 +370,7 @@ const CLUBS = {
   },
   elyseesclub: {
     name: 'Paris Élysées Club',
+    url: 'https://www.pariselyseesclub.com/',
     keys: {
       blackjack: 'Blackjack',
       ultimate:  'Ultimate Poker'
@@ -363,6 +378,7 @@ const CLUBS = {
   },
   circus: {
     name: 'Club Circus Paris',
+    url: 'https://www.circuscasino.fr/fr/casinos/paris/',
     keys: {
       blazing_blackjack: 'Blazing Blackjack',
       uth_progressive:   'UTH Progressive'
@@ -370,6 +386,7 @@ const CLUBS = {
   },
   pierrecharron: {
     name: 'Club Pierre Charron',
+    url: 'https://www.clubpierrecharron.com/',
     keys: {
       blackjack_minor: 'Blackjack Minor',
       blackjack_major: 'Blackjack Major',
@@ -390,10 +407,15 @@ function render(data) {
     const card = document.createElement('div');
     card.className = 'card';
 
-    // Nom du club
+    // Nom du club (lien cliquable)
     const nameEl = document.createElement('div');
     nameEl.className = 'card-name';
-    nameEl.textContent = config.name;
+    const nameLink = document.createElement('a');
+    nameLink.href = config.url;
+    nameLink.target = '_blank';
+    nameLink.rel = 'noopener noreferrer';
+    nameLink.textContent = config.name;
+    nameEl.appendChild(nameLink);
     card.appendChild(nameEl);
 
     // Lignes de jackpot

@@ -2,18 +2,17 @@ name: Scrape Jackpots
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # Toutes les 2h (économise les minutes gratuites)
-  workflow_dispatch:          # Bouton "Run workflow" manuel dans l'interface GitHub
+    - cron: '*/30 * * * *'  # Toutes les 30 minutes (gratuit sur dépôt public)
+  workflow_dispatch:          # Bouton manuel
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
 
-      - name: Installation de Node.js 20
+      - name: Installation de Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'

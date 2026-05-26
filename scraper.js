@@ -57,17 +57,18 @@ async function scrapeBarriere(page) {
     const amt  = clean(amtEl.textContent.trim());
     const name = nameEl.textContent.trim().toLowerCase();
     if (!amt) return null;
-    if (name.includes('blackjack') && name.includes('major')) return { type: 'blackjack_major', amt };
-    if (name.includes('blackjack')) return { type: 'blackjack', amt };
+    // Détecter le type selon le nom affiché
+    if (name.includes('major')) return { type: 'blackjack_major', amt };
+    if (name.includes('blackjack') || name.includes('black jack')) return { type: 'blackjack_minor', amt };
     if (name.includes('ultimate') || name.includes('hold')) return { type: 'ultimate', amt };
-    return null;
+    return { type: 'unknown_' + name.slice(0,20), amt }; // log tout pour debug
   });
-  const collected = { blackjack: null, blackjack_major: null, ultimate: null };
-  const deadline = Date.now() + 35000; // plus long pour 3 jackpots
+  const collected = { blackjack_minor: null, blackjack_major: null, ultimate: null };
+  // Ne jamais s'arrêter tôt : laisser tourner 40s pour voir défiler les 3 jackpots
+  const deadline = Date.now() + 40000;
   while (Date.now() < deadline) {
     const snap = await grab().catch(() => null);
     if (snap) collected[snap.type] = snap.amt;
-    if (collected.blackjack && collected.ultimate) break;
     await sleep(700);
   }
   return collected;
@@ -98,47 +99,74 @@ async function scrapeElysees(page) {
 }
 
 // ─── 4. Club Circus Paris ─────────────────────────────────────────────────────
-// Les compteurs sont animés en continu (centimes inclus) dans la section #intro
-// Format affiché : "33 456,78" ou "19 648,31" (virgule = séparateur décimal)
-// Stratégie : chercher tous les éléments feuilles contenant un nombre avec virgule
-// dans #intro, prendre les 2 plus grands, garder uniquement la partie entière
+// Compteurs animés : chaque chiffre est dans un <span> séparé.
+// element.textContent colle tous les chiffres → illisible.
+// Solution : TreeWalker sur les noeuds TEXTE bruts pour lire chaque span
+// individuellement, puis reconstituer les nombres par conteneur parent.
 async function scrapeCircus(page) {
-  await sleep(6000);
+  await sleep(7000);
   return page.evaluate(() => {
     const intro = document.querySelector('#intro');
     if (!intro) return { blazing_blackjack: null, uth_progressive: null };
 
-    const amounts = [];
+    const amounts = new Set();
 
-    // Parcourir tous les éléments feuilles dans #intro
+    // ── Stratégie 1 : attributs data-* portant la valeur cible du compteur ──
     intro.querySelectorAll('*').forEach(el => {
-      if (el.children.length > 0) return; // feuilles uniquement
-      const t = (el.textContent || '').trim();
-      if (!t) return;
-
-      // Format avec virgule décimale : "33 456,78" ou "33456,78" ou "33.456,78"
-      const m = t.match(/^(\d[\d\s.]*),(\d{2})$/);
-      if (m) {
-        const intPart = parseInt(m[1].replace(/[\s.]/g, ''), 10);
-        if (intPart > 1000 && intPart < 10000000) amounts.push(intPart);
-      }
+      ['value','target','count','number','amount','final'].forEach(attr => {
+        const v = el.dataset[attr];
+        if (!v) return;
+        const n = parseFloat(v.replace(/[^0-9.]/g, ''));
+        if (n > 1000 && n < 10000000) amounts.add(Math.floor(n));
+      });
     });
 
-    // Si pas trouvé avec virgule, fallback : grands nombres dans le texte brut
-    if (amounts.length < 2) {
-      const allText = intro.innerText || intro.textContent || '';
-      // Chercher des nombres avec virgule : "33 456,78"
-      const matches = [...allText.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
+    // ── Stratégie 2 : TreeWalker sur les noeuds texte bruts ──
+    // Chaque span d'un compteur contient UN chiffre → on remonte au parent
+    // commun pour reconstituer le nombre complet
+    const seen = new WeakSet();
+    const walker = document.createTreeWalker(intro, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const t = node.textContent.trim();
+      // Noeud texte contenant uniquement des chiffres/virgule/point/espace
+      if (!/^[\d\s.,]+$/.test(t) || t.length === 0) continue;
+
+      // Remonter au parent englobant (jusqu'à 4 niveaux) et lire son innerText
+      let el = node.parentElement;
+      for (let i = 0; i < 4 && el && el !== intro; i++, el = el.parentElement) {
+        if (seen.has(el)) continue;
+        seen.add(el);
+        const raw = el.innerText || el.textContent || '';
+        // Chercher le format "XX XXX,XX" (avec ou sans espace, séparateur virgule)
+        const matches = [...raw.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
+        matches.forEach(m => {
+          const n = parseInt(m[1].replace(/[\s.]/g, ''), 10);
+          if (n > 1000 && n < 10000000) amounts.add(n);
+        });
+        // Aussi chercher juste de grands entiers si pas de virgule
+        const intMatches = [...raw.matchAll(/\b(\d{2}\s?\d{3})\b/g)];
+        intMatches.forEach(m => {
+          const n = parseInt(m[1].replace(/\s/g, ''), 10);
+          if (n > 5000 && n < 10000000) amounts.add(n);
+        });
+      }
+    }
+
+    // ── Stratégie 3 : fallback texte brut de toute la section #intro ──
+    if (amounts.size < 2) {
+      const raw = intro.innerText || intro.textContent || '';
+      const matches = [...raw.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
       matches.forEach(m => {
         const n = parseInt(m[1].replace(/[\s.]/g, ''), 10);
-        if (n > 1000 && n < 10000000) amounts.push(n);
+        if (n > 1000 && n < 10000000) amounts.add(n);
       });
     }
 
-    const unique = [...new Set(amounts)].sort((a, b) => b - a);
+    const sorted = [...amounts].sort((a, b) => b - a);
     return {
-      uth_progressive:   unique[0] ? unique[0].toLocaleString('fr-FR') + ' €' : null,
-      blazing_blackjack: unique[1] ? unique[1].toLocaleString('fr-FR') + ' €' : null,
+      uth_progressive:   sorted[0] ? sorted[0].toLocaleString('fr-FR') + ' €' : null,
+      blazing_blackjack: sorted[1] ? sorted[1].toLocaleString('fr-FR') + ' €' : null,
     };
   });
 }

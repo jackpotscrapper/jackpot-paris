@@ -1,5 +1,5 @@
 {
-  "ts": "2026-05-26T20:24:20.056Z",
+  "ts": "2026-05-26T20:33:09.568Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -13,6 +13,7 @@
       "ok": true,
       "data": {
         "blackjack": "7 306 €",
+        "blackjack_major": null,
         "ultimate": "20 761 €"
       }
     },
@@ -35,7 +36,7 @@
       "data": {
         "blackjack_minor": "26 330 €",
         "blackjack_major": "12 886 €",
-        "ultimate": "12 900 €"
+        "ultimate": "12 931 €"
       }
     }
   }

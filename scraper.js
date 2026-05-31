@@ -246,23 +246,25 @@ async function scrapeMontmartre(page) {
     const result = { mega_blackjack: null, mega_ultimate: null, minor: null };
     const megaAmounts = [];
 
-    const cards = document.querySelectorAll('div.jk-card');
-    let megaIndex = 0; // compteur pour les cartes Mega
+    // Minor : sélecteur direct sur la classe .minor
+    const minorEl = document.querySelector('span.jk-meter-amount.minor');
+    if (minorEl) result.minor = clean(minorEl.textContent.trim());
 
-    cards.forEach(card => {
+    // Mega Jackpots : parcourir les jk-cards qui ont un label "Mega Jackpot"
+    let megaIndex = 0;
+    document.querySelectorAll('div.jk-card').forEach(card => {
       const labelEl = card.querySelector('span.jk-meter-label');
-      const amtEl   = card.querySelector('span.jk-meter-amount') || card.querySelector('span.jk-meter-amount.minor');
+      // Prendre le montant non-minor (le Mega)
+      const amtEl = card.querySelector('span.jk-meter-amount:not(.minor)');
       if (!labelEl || !amtEl) return;
 
       const label = labelEl.textContent.trim().toLowerCase();
       const amt   = clean(amtEl.textContent.trim());
       if (!amt) return;
 
-      if (label.includes('minor') || amtEl.classList.contains('minor')) {
-        result.minor = amt;
-      } else if (label.includes('mega') || label.includes('jackpot')) {
+      if (label.includes('mega') || label.includes('jackpot')) {
         // Position dans le DOM = discriminant stable :
-        // Card #0 (premier) = Ultimate, Card #1 (second) = Blackjack Major
+        // Card #0 = Ultimate, Card #1 = Blackjack Major
         if (megaIndex === 0) result.mega_ultimate  = amt;
         if (megaIndex === 1) result.mega_blackjack = amt;
         megaIndex++;

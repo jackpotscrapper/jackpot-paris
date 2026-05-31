@@ -1,9 +1,7 @@
 name: Scrape Jackpots
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'  # Toutes les 30 minutes (gratuit sur dépôt public)
-  workflow_dispatch:          # Bouton manuel
+  workflow_dispatch: # Déclenché par /trigger sur Render ou manuellement
 
 jobs:
   scrape:

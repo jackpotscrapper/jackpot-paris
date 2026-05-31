@@ -218,6 +218,61 @@ async function scrapePierreCharron(page) {
   });
 }
 
+// ─── 6. Club Montmartre Paris ─────────────────────────────────────────────────
+// Structure exacte : div.jk-card > div.jk-meter
+//   span.jk-meter-label  → "Mega Jackpot" / "Minor"
+//   span.jk-meter-amount → "53 623,40 €"
+// 2 cartes "Mega Jackpot" (Blackjack + Ultimate) + 1 "Minor"
+// Toutes dans le DOM simultanément
+
+async function scrapeMontmartre(page) {
+  await sleep(4000);
+  return page.evaluate(() => {
+    const clean = (raw) => {
+      if (!raw) return null;
+      // Format "53 623,40 €" → garder uniquement la partie entière
+      const m = raw.match(/([\d\s]+),\d{2}/);
+      if (m) {
+        const n = parseInt(m[1].replace(/\s/g, ''), 10);
+        if (n < 100) return null;
+        return n.toLocaleString('fr-FR') + ' €';
+      }
+      // Fallback entier simple
+      const d = raw.replace(/[^\d]/g, '');
+      if (!d || parseInt(d, 10) < 100) return null;
+      return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
+    };
+
+    const result = { mega_blackjack: null, mega_ultimate: null, minor: null };
+    const megaAmounts = [];
+
+    const cards = document.querySelectorAll('div.jk-card');
+    let megaIndex = 0; // compteur pour les cartes Mega
+
+    cards.forEach(card => {
+      const labelEl = card.querySelector('span.jk-meter-label');
+      const amtEl   = card.querySelector('span.jk-meter-amount');
+      if (!labelEl || !amtEl) return;
+
+      const label = labelEl.textContent.trim().toLowerCase();
+      const amt   = clean(amtEl.textContent.trim());
+      if (!amt) return;
+
+      if (label.includes('minor')) {
+        result.minor = amt;
+      } else if (label.includes('mega') || label.includes('jackpot')) {
+        // Position dans le DOM = discriminant stable :
+        // Card #0 (premier) = Ultimate, Card #1 (second) = Blackjack Major
+        if (megaIndex === 0) result.mega_ultimate  = amt;
+        if (megaIndex === 1) result.mega_blackjack = amt;
+        megaIndex++;
+      }
+    });
+
+    return result;
+  });
+}
+
 // ─── Scraper principal ────────────────────────────────────────────────────────
 const clubs = [
   { id: 'imperial',      name: 'Imperial Club Paris',    url: 'https://imperialclubparis.com/',                scrapeFn: scrapeImperial },

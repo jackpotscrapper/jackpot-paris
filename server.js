@@ -1,56 +1,72 @@
 const express = require('express');
 const fetch = require('node-fetch');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const GITHUB_USER = process.env.GITHUB_USER;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'jackpot-paris';
-
-if (!GITHUB_USER) {
-  console.warn('⚠️  Variable GITHUB_USER non définie — /api/latest retournera des données vides.');
-}
-
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const RAW_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/latest.json`;
 
-// Servir les fichiers statiques (index.html, etc.)
+// ── Fichiers statiques ─────────────────────────────────────────────────────
 app.use(express.static(__dirname));
 
-// Endpoint principal — lit latest.json depuis GitHub raw
+// ── API : lit latest.json depuis GitHub raw ────────────────────────────────
 app.get('/api/latest', async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-  if (!GITHUB_USER) {
-    return res.json({ ts: null, results: {}, error: 'GITHUB_USER non configuré' });
-  }
-
   try {
-    // Ajout du timestamp pour contourner le cache CDN GitHub
-    const url = `${RAW_URL}?t=${Date.now()}`;
-    const r = await fetch(url, { timeout: 10000 });
-
-    if (!r.ok) {
-      console.error(`GitHub raw — HTTP ${r.status}`);
-      return res.json({ ts: null, results: {} });
-    }
-
+    const r = await fetch(RAW_URL + '?t=' + Date.now(), { timeout: 10000 });
+    if (!r.ok) return res.json({ ts: null, results: {} });
     const data = await r.json();
     res.json(data);
-
   } catch (err) {
-    console.error('Erreur fetch latest.json :', err.message);
     res.json({ ts: null, results: {}, error: err.message });
   }
 });
 
-// Health check pour Render
+// ── Trigger : déclenche le workflow GitHub Actions via API ─────────────────
+// Appelé par UptimeRobot toutes les 30 min sur /trigger?token=SECRET
+app.get('/trigger', async (req, res) => {
+  const secret = process.env.TRIGGER_SECRET || '';
+  if (secret && req.query.token !== secret) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  if (!GITHUB_TOKEN) {
+    return res.status(500).json({ error: 'GITHUB_TOKEN non configuré' });
+  }
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/scrape.yml/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'main' })
+      }
+    );
+    if (r.status === 204) {
+      console.log(`[${new Date().toISOString()}] Workflow déclenché via /trigger`);
+      res.json({ ok: true, ts: new Date().toISOString() });
+    } else {
+      const txt = await r.text();
+      res.status(r.status).json({ error: txt });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Health check ───────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
-  console.log(`🎰  Jackpots Paris — serveur démarré sur le port ${PORT}`);
+  console.log(`🎰  Jackpots Paris — port ${PORT}`);
   console.log(`    Source : ${RAW_URL}`);
 });

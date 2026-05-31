@@ -280,6 +280,7 @@ const clubs = [
   { id: 'elyseesclub',   name: 'Paris Élysées Club',     url: 'https://www.pariselyseesclub.com/',             scrapeFn: scrapeElysees },
   { id: 'circus',        name: 'Club Circus Paris',      url: 'https://www.circuscasino.fr/fr/casinos/paris/', scrapeFn: scrapeCircus },
   { id: 'pierrecharron', name: 'Club Pierre Charron',    url: 'https://www.clubpierrecharron.com/',            scrapeFn: scrapePierreCharron },
+  { id: 'montmartre',    name: 'Club Montmartre Paris',  url: 'https://www.clubmontmartre-paris.com/',         scrapeFn: scrapeMontmartre },
 ];
 
 async function scrapeClub(browser, club) {

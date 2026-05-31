@@ -1,5 +1,5 @@
 {
-  "ts": "2026-05-31T21:38:38.454Z",
+  "ts": "2026-05-31T22:16:04.053Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -20,24 +20,21 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": null,
-        "ultimate": null
+        "blackjack": "29 005 €",
+        "ultimate": "10 212 €"
       }
     },
     "circus": {
       "ok": true,
       "data": {
         "uth_progressive": "55 859 €",
-        "blazing_blackjack": "5 467 €"
+        "blazing_blackjack": "5 466 €"
       }
     },
     "pierrecharron": {
-      "ok": true,
-      "data": {
-        "blackjack_minor": "7 227 €",
-        "blackjack_major": "8 846 €",
-        "ultimate": "26 731 €"
-      }
+      "ok": false,
+      "error": "Navigation timeout of 45000 ms exceeded",
+      "data": {}
     }
   }
 }

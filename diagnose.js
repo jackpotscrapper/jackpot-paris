@@ -2,14 +2,10 @@ const puppeteer = require('puppeteer');
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const SITES = [
-  { id: 'imperial',      url: 'https://imperialclubparis.com/',               wait: 3000 },
-  { id: 'barriere',      url: 'https://www.casinosbarriere.com/paris',         wait: 5000 },
-  { id: 'elyseesclub',   url: 'https://www.pariselyseesclub.com/',             wait: 3000 },
-  { id: 'circus',        url: 'https://www.circuscasino.fr/fr/casinos/paris/', wait: 5000 },
-  { id: 'pierrecharron', url: 'https://www.clubpierrecharron.com/',            wait: 7000 },
+  { id: 'montmartre', url: 'https://www.clubmontmartre-paris.com/', wait: 5000 },
 ];
 
-const KEYWORDS = ['minor','major','ultimate','blackjack','blazing','uth','progressive','jackpot','poker'];
+const KEYWORDS = ['minor','major','ultimate','blackjack','blazing','uth','progressive','jackpot','poker','montant','gain'];
 
 async function diagnoseSite(browser, site) {
   const page = await browser.newPage();
@@ -24,12 +20,10 @@ async function diagnoseSite(browser, site) {
   await page.goto(site.url, { waitUntil: 'networkidle2', timeout: 45000 });
   await sleep(site.wait);
 
-  // 1. Lister toutes les frames
   const frames = page.frames();
   console.log(`\nFrames disponibles (${frames.length}):`);
   frames.forEach((f, i) => console.log(`  [${i}] ${f.url().slice(0, 100)}`));
 
-  // 2. Pour chaque frame, dumper les éléments contenant des mots-clés OU des montants
   for (let fi = 0; fi < frames.length; fi++) {
     const frame = frames[fi];
     try {
@@ -38,11 +32,8 @@ async function diagnoseSite(browser, site) {
         const results = [];
 
         document.querySelectorAll('*').forEach(el => {
-          // Seulement les éléments feuilles ou quasi-feuilles
           if (el.children.length > 5) return;
-          const own = (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3)
-            ? el.textContent.trim()   // noeud texte pur
-            : el.textContent.trim();
+          const own = el.textContent.trim();
           if (!own || own.length > 200) return;
 
           const low = own.toLowerCase();
@@ -51,7 +42,6 @@ async function diagnoseSite(browser, site) {
 
           if (!hasKw && !hasAmt) return;
 
-          // Construire le chemin CSS simplifié
           let path = '';
           let cur = el;
           let depth = 0;

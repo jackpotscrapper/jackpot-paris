@@ -251,14 +251,14 @@ async function scrapeMontmartre(page) {
 
     cards.forEach(card => {
       const labelEl = card.querySelector('span.jk-meter-label');
-      const amtEl   = card.querySelector('span.jk-meter-amount');
+      const amtEl   = card.querySelector('span.jk-meter-amount') || card.querySelector('span.jk-meter-amount.minor');
       if (!labelEl || !amtEl) return;
 
       const label = labelEl.textContent.trim().toLowerCase();
       const amt   = clean(amtEl.textContent.trim());
       if (!amt) return;
 
-      if (label.includes('minor')) {
+      if (label.includes('minor') || amtEl.classList.contains('minor')) {
         result.minor = amt;
       } else if (label.includes('mega') || label.includes('jackpot')) {
         // Position dans le DOM = discriminant stable :
@@ -280,7 +280,6 @@ const clubs = [
   { id: 'elyseesclub',   name: 'Paris Élysées Club',     url: 'https://www.pariselyseesclub.com/',             scrapeFn: scrapeElysees },
   { id: 'circus',        name: 'Club Circus Paris',      url: 'https://www.circuscasino.fr/fr/casinos/paris/', scrapeFn: scrapeCircus },
   { id: 'pierrecharron', name: 'Club Pierre Charron',    url: 'https://www.clubpierrecharron.com/',            scrapeFn: scrapePierreCharron },
-  { id: 'montmartre',    name: 'Club Montmartre Paris',  url: 'https://www.clubmontmartre-paris.com/',         scrapeFn: scrapeMontmartre },
 ];
 
 async function scrapeClub(browser, club) {

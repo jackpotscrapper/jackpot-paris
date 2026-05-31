@@ -1,98 +1,86 @@
 const puppeteer = require('puppeteer');
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-const SITES = [
-  { id: 'montmartre', url: 'https://www.clubmontmartre-paris.com/', wait: 5000 },
-];
-
-const KEYWORDS = ['minor','major','ultimate','blackjack','blazing','uth','progressive','jackpot','poker','montant','gain'];
-
-async function diagnoseSite(browser, site) {
-  const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-  await page.setRequestInterception(true);
-  page.on('request', req => ['image','font','media'].includes(req.resourceType()) ? req.abort() : req.continue());
-
-  console.log(`\n${'='.repeat(70)}`);
-  console.log(`SITE: ${site.id} — ${site.url}`);
-  console.log('='.repeat(70));
-
-  await page.goto(site.url, { waitUntil: 'networkidle2', timeout: 45000 });
-  await sleep(site.wait);
-
-  const frames = page.frames();
-  console.log(`\nFrames disponibles (${frames.length}):`);
-  frames.forEach((f, i) => console.log(`  [${i}] ${f.url().slice(0, 100)}`));
-
-  for (let fi = 0; fi < frames.length; fi++) {
-    const frame = frames[fi];
-    try {
-      const hits = await frame.evaluate((KEYWORDS) => {
-        const toNum = s => parseInt((s||'').replace(/[^\d]/g,''),10)||0;
-        const results = [];
-
-        document.querySelectorAll('*').forEach(el => {
-          if (el.children.length > 5) return;
-          const own = el.textContent.trim();
-          if (!own || own.length > 200) return;
-
-          const low = own.toLowerCase();
-          const hasKw = KEYWORDS.some(k => low.includes(k));
-          const hasAmt = /\d[\d\s.,]*\s*€/.test(own);
-
-          if (!hasKw && !hasAmt) return;
-
-          let path = '';
-          let cur = el;
-          let depth = 0;
-          while (cur && depth < 5) {
-            const tag = cur.tagName ? cur.tagName.toLowerCase() : '';
-            const cls = cur.className && typeof cur.className === 'string'
-              ? '.' + cur.className.trim().split(/\s+/).slice(0,2).join('.')
-              : '';
-            const id = cur.id ? '#' + cur.id : '';
-            path = `${tag}${id}${cls}` + (path ? ' > ' + path : '');
-            cur = cur.parentElement;
-            depth++;
-          }
-
-          results.push({
-            path: path.slice(0, 120),
-            text: own.slice(0, 80),
-            hasKw,
-            hasAmt,
-            amtVal: hasAmt ? toNum(own.match(/(\d[\d\s.,]*)\s*€/)[0]) : 0,
-          });
-        });
-
-        return results;
-      }, KEYWORDS);
-
-      if (hits.length) {
-        console.log(`\n  Frame [${fi}] — ${hits.length} éléments pertinents:`);
-        hits.forEach(h => {
-          const flags = [h.hasKw ? 'KW' : '  ', h.hasAmt ? `AMT:${h.amtVal}` : '      '].join(' ');
-          console.log(`    [${flags}] "${h.text}"`);
-          console.log(`           ${h.path}`);
-        });
-      }
-    } catch(e) {
-      console.log(`  Frame [${fi}] — erreur: ${e.message}`);
-    }
-  }
-
-  await page.close();
-}
-
 async function main() {
   const browser = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu']
   });
 
-  for (const site of SITES) {
-    await diagnoseSite(browser, site).catch(e => console.error(`ERREUR ${site.id}:`, e.message));
-  }
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+  await page.setRequestInterception(true);
+  page.on('request', req => ['image','font','media'].includes(req.resourceType()) ? req.abort() : req.continue());
+
+  await page.goto('https://www.clubmontmartre-paris.com/', { waitUntil: 'networkidle2', timeout: 45000 });
+  await sleep(5000);
+
+  const result = await page.evaluate(() => {
+    const output = [];
+
+    // Dump complet de chaque jk-card avec tous ses attributs et enfants
+    document.querySelectorAll('div.jk-card').forEach((card, i) => {
+      const cardInfo = {
+        index: i,
+        card_class: card.className,
+        card_id: card.id,
+        card_attrs: {},
+        meter: null
+      };
+
+      // Tous les attributs de la card
+      for (const attr of card.attributes) {
+        cardInfo.card_attrs[attr.name] = attr.value;
+      }
+
+      // Le jk-meter à l'intérieur
+      const meter = card.querySelector('div.jk-meter');
+      if (meter) {
+        cardInfo.meter = {
+          class: meter.className,
+          id: meter.id,
+          attrs: {},
+          children: []
+        };
+        for (const attr of meter.attributes) {
+          cardInfo.meter.attrs[attr.name] = attr.value;
+        }
+        // Tous les enfants du meter
+        meter.querySelectorAll('*').forEach(child => {
+          const childInfo = {
+            tag: child.tagName,
+            class: child.className,
+            id: child.id,
+            attrs: {},
+            text: child.textContent.trim().slice(0, 60)
+          };
+          for (const attr of child.attributes) {
+            childInfo.attrs[attr.name] = attr.value;
+          }
+          cardInfo.meter.children.push(childInfo);
+        });
+      }
+
+      output.push(cardInfo);
+    });
+
+    return output;
+  });
+
+  console.log('=== DUMP COMPLET DES JK-CARDS ===\n');
+  result.forEach(card => {
+    console.log(`\n--- Card #${card.index} ---`);
+    console.log('card.class:', card.card_class);
+    console.log('card.id:', card.card_id);
+    console.log('card.attrs:', JSON.stringify(card.card_attrs));
+    if (card.meter) {
+      console.log('meter.class:', card.meter.class);
+      console.log('meter.attrs:', JSON.stringify(card.meter.attrs));
+      card.meter.children.forEach(c => {
+        console.log(`  child <${c.tag}> class="${c.class}" id="${c.id}" attrs=${JSON.stringify(c.attrs)} text="${c.text}"`);
+      });
+    }
+  });
 
   await browser.close();
 }

@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-05T18:17:29.613Z",
+  "ts": "2026-06-05T18:47:37.379Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -40,7 +40,7 @@
       "ok": true,
       "data": {
         "mega_blackjack": "15 040 €",
-        "mega_ultimate": "60 139 €",
+        "mega_ultimate": "60 159 €",
         "minor": "3 623 €"
       }
     }

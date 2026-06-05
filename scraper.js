@@ -285,7 +285,7 @@ const clubs = [
   { id: 'montmartre',    name: 'Club Montmartre Paris',  url: 'https://www.clubmontmartre-paris.com/',         scrapeFn: scrapeMontmartre },
 ];
 
-async function scrapeClub(browser, club) {
+async function scrapeClubOnce(browser, club) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
@@ -294,16 +294,31 @@ async function scrapeClub(browser, club) {
       if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
       else req.continue();
     });
-    console.log(`  → ${club.url}`);
-    await page.goto(club.url, { waitUntil: 'networkidle2', timeout: 45000 });
-    const data = await club.scrapeFn(page);
-    console.log(`  ✓ ${club.name} :`, JSON.stringify(data));
-    return { ok: true, data };
-  } catch (err) {
-    console.error(`  ✗ ${club.name} : ${err.message}`);
-    return { ok: false, error: err.message, data: {} };
+    const timeout  = club.id === 'pierrecharron' ? 90000 : 45000;
+    const waitUntil = club.id === 'pierrecharron' ? 'domcontentloaded' : 'networkidle2';
+    await page.goto(club.url, { waitUntil, timeout });
+    return await club.scrapeFn(page);
   } finally {
     await page.close();
+  }
+}
+
+async function scrapeClub(browser, club) {
+  const maxRetries = 2;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`  → ${club.url}${attempt > 1 ? ' (tentative ' + attempt + ')' : ''}`);
+      const data = await scrapeClubOnce(browser, club);
+      console.log(`  ✓ ${club.name} :`, JSON.stringify(data));
+      return { ok: true, data };
+    } catch (err) {
+      console.error(`  ✗ ${club.name} tentative ${attempt} : ${err.message}`);
+      if (attempt === maxRetries) {
+        return { ok: false, error: err.message, data: {} };
+      }
+      console.log(`  ↻ Nouvelle tentative dans 5s...`);
+      await sleep(5000);
+    }
   }
 }
 

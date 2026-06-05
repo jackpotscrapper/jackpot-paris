@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-05T16:17:33.758Z",
+  "ts": "2026-06-05T16:46:42.975Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -32,9 +32,12 @@
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "error": "Navigation timeout of 45000 ms exceeded",
-      "data": {}
+      "ok": true,
+      "data": {
+        "blackjack_minor": "3 598 €",
+        "blackjack_major": "12 409 €",
+        "ultimate": "43 460 €"
+      }
     },
     "montmartre": {
       "ok": true,

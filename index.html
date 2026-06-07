@@ -273,10 +273,12 @@
       flex-shrink: 0;
     }
 
-    .status-ok   .status-dot { background: var(--green); }
-    .status-err  .status-dot { background: var(--red); }
-    .status-ok   { color: rgba(46,204,113,.5); }
-    .status-err  { color: rgba(231,76,60,.5); }
+    .status-ok    .status-dot { background: var(--green); }
+    .status-err   .status-dot { background: var(--red); }
+    .status-stale .status-dot { background: var(--gold-dim); }
+    .status-ok    { color: rgba(46,204,113,.5); }
+    .status-err   { color: rgba(231,76,60,.5); }
+    .status-stale { color: rgba(201,168,76,.5); }
 
     /* ── Footer ── */
     footer {
@@ -451,11 +453,14 @@ function render(data) {
 
     // Statut
     const status = document.createElement('div');
-    status.className = `card-status ${club.ok ? 'status-ok' : 'status-err'}`;
+    const isStale = !club.ok && club.stale;
+    status.className = `card-status ${club.ok ? 'status-ok' : isStale ? 'status-stale' : 'status-err'}`;
     const dot = document.createElement('span');
     dot.className = 'status-dot';
     status.appendChild(dot);
-    status.appendChild(document.createTextNode(club.ok ? 'OK' : (club.error || 'Erreur')));
+    status.appendChild(document.createTextNode(
+      club.ok ? 'OK' : isStale ? 'Dernières valeurs connues' : (club.error || 'Erreur')
+    ));
     card.appendChild(status);
 
     grid.appendChild(card);

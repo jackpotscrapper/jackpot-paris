@@ -324,18 +324,42 @@ async function scrapeClub(browser, club) {
 
 async function main() {
   console.log('🎰  Jackpots Paris — ' + new Date().toISOString());
+
+  // Charger les dernières valeurs connues pour conserver les données en cas d'échec
+  const outPath = path.join(DATA_DIR, 'latest.json');
+  let previousResults = {};
+  try {
+    const prev = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+    previousResults = prev.results || {};
+    console.log('  📂 Données précédentes chargées');
+  } catch (_) {}
+
   const browser = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
   });
+
   const results = {};
   for (const club of clubs) {
     console.log(`\n[${club.id}]`);
-    results[club.id] = await scrapeClub(browser, club);
+    const result = await scrapeClub(browser, club);
+
+    if (!result.ok && previousResults[club.id] && previousResults[club.id].ok) {
+      // Échec : conserver les dernières valeurs connues avec un flag
+      console.log(`  ↩  Échec — conservation des dernières valeurs connues pour ${club.name}`);
+      results[club.id] = {
+        ok: false,
+        stale: true, // données anciennes
+        error: result.error,
+        data: previousResults[club.id].data
+      };
+    } else {
+      results[club.id] = result;
+    }
   }
+
   await browser.close();
   const output = { ts: new Date().toISOString(), results };
-  const outPath = path.join(DATA_DIR, 'latest.json');
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2), 'utf-8');
   console.log('\n✅  latest.json sauvegardé');
   console.log(JSON.stringify(output, null, 2));

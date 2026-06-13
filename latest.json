@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-13T06:51:44.485Z",
+  "ts": "2026-06-13T07:23:54.778Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -32,7 +32,9 @@
       }
     },
     "pierrecharron": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
       "data": {
         "blackjack_minor": "12 138 €",
         "blackjack_major": "9 728 €",

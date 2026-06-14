@@ -1,12 +1,12 @@
 {
-  "ts": "2026-06-14T11:54:29.626Z",
+  "ts": "2026-06-14T12:24:37.640Z",
   "results": {
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "4 388 €",
-        "blackjack_major": "34 105 €",
-        "ultimate": "10 562 €"
+        "blackjack_minor": "4 442 €",
+        "blackjack_major": "34 165 €",
+        "ultimate": "10 641 €"
       }
     },
     "barriere": {

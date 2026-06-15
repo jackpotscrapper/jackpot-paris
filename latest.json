@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-15T06:07:19.414Z",
+  "ts": "2026-06-15T06:37:22.833Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,8 +27,8 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "12 193 €",
-        "blazing_blackjack": "11 472 €"
+        "uth_progressive": "12 014 €",
+        "blazing_blackjack": "11 371 €"
       }
     },
     "pierrecharron": {

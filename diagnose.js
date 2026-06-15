@@ -1,51 +1,67 @@
 const puppeteer = require('puppeteer');
 
 (async () => {
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding'
+    ]
+  });
   const page = await browser.newPage();
 
-  console.log('=== DIAGNOSTIC BARRIERE v2 ===');
+  // Forcer la page à croire qu'elle est visible
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+    Object.defineProperty(document, 'hidden', { get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  // Taille d'écran réelle
+  await page.setViewport({ width: 1280, height: 800 });
+
+  console.log('=== DIAGNOSTIC BARRIERE v3 (visibilite forcee) ===');
   await page.goto('https://www.casinosbarriere.com/paris', {
     waitUntil: 'networkidle2', timeout: 60000
   });
 
-  console.log('Page chargee. Observation pendant 35s...\n');
+  // Re-déclencher visibilitychange après chargement
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+    Object.defineProperty(document, 'hidden', { get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
 
-  for (let i = 0; i < 14; i++) {
-    await new Promise(r => setTimeout(r, 2500));
+  console.log('Page chargee. Observation pendant 60s...\n');
+
+  const seen = {};
+
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
 
     const snap = await page.evaluate(() => {
-      // 1. Dump complet du bloc CsnJackpotHero (innerHTML)
-      const hero = document.querySelector('.CsnJackpotHero__inner');
-      const heroHTML = hero ? hero.innerHTML.replace(/\s+/g, ' ').slice(0, 500) : 'NOT FOUND';
-
-      // 2. Montant actuel
       const amount = document.querySelector('.CsnJackpotHero__amount-inner');
-      const amountText = amount ? amount.innerText.trim() : 'NOT FOUND';
-
-      // 3. Cherche tous les éléments texte dans .CsnJackpotHero (pas seulement feuilles)
-      const heroRoot = document.querySelector('[class*="CsnJackpotHero"]');
-      const allTexts = [];
-      if (heroRoot) {
-        heroRoot.querySelectorAll('*').forEach(el => {
-          const t = el.innerText?.trim();
-          if (t && t.length > 0 && t.length < 200) {
-            allTexts.push({ classes: el.className, text: t });
-          }
-        });
-      }
-
-      return { heroHTML, amountText, allTexts };
+      const name   = document.querySelector('.CsnJackpotHero__name');
+      return {
+        amount: amount ? amount.innerText.trim() : 'NOT FOUND',
+        name:   name   ? name.innerText.trim()   : 'NOT FOUND'
+      };
     });
 
-    console.log(`--- t=${2.5 * (i + 1)}s ---`);
-    console.log('MONTANT:', snap.amountText);
-    console.log('TOUS LES TEXTES DANS CsnJackpotHero:');
-    snap.allTexts.forEach(t => console.log(' ', JSON.stringify(t)));
-    console.log('HTML HERO (500 chars):', snap.heroHTML);
-    console.log('');
+    const key = `${snap.name}|${snap.amount}`;
+    if (!seen[key]) {
+      seen[key] = true;
+      console.log(`t=${2*(i+1)}s — NOM: "${snap.name}" | MONTANT: "${snap.amount}"`);
+    } else {
+      process.stdout.write('.');
+    }
   }
 
-  await browser.close();
+  console.log('\n\n=== RESUME ===');
+  Object.keys(seen).forEach(k => console.log(' ', k));
   console.log('=== FIN ===');
+
+  await browser.close();
 })();

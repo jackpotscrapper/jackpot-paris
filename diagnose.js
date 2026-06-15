@@ -12,7 +12,7 @@ async function main() {
   await page.setRequestInterception(true);
   page.on('request', req => ['image','font','media'].includes(req.resourceType()) ? req.abort() : req.continue());
 
-  await page.goto('https://www.clubmontmartre-paris.com/', { waitUntil: 'networkidle2', timeout: 45000 });
+  await page.goto('https://www.casinosbarriere.com/paris', { waitUntil: 'networkidle2', timeout: 45000 });
   await sleep(5000);
 
   const result = await page.evaluate(() => {

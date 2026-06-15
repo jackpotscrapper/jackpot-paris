@@ -12,14 +12,13 @@ const puppeteer = require('puppeteer');
   });
   const page = await browser.newPage();
 
-  // Forcer la page à croire qu'elle est visible
+  // Forcer la page à croire qu'elle est visible (avant chargement)
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
     Object.defineProperty(document, 'hidden', { get: () => false });
     document.dispatchEvent(new Event('visibilitychange'));
   });
 
-  // Taille d'écran réelle
   await page.setViewport({ width: 1280, height: 800 });
 
   console.log('=== DIAGNOSTIC BARRIERE v3 (visibilite forcee) ===');
@@ -27,10 +26,8 @@ const puppeteer = require('puppeteer');
     waitUntil: 'networkidle2', timeout: 60000
   });
 
-  // Re-déclencher visibilitychange après chargement
+  // Déclencher visibilitychange sans redéfinir la propriété
   await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
-    Object.defineProperty(document, 'hidden', { get: () => false });
     document.dispatchEvent(new Event('visibilitychange'));
   });
 
@@ -61,7 +58,7 @@ const puppeteer = require('puppeteer');
 
   console.log('\n\n=== RESUME ===');
   Object.keys(seen).forEach(k => console.log(' ', k));
-  console.log('=== FIN ===');
+  console.log('\n=== FIN ===');
 
   await browser.close();
 })();

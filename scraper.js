@@ -43,35 +43,48 @@ async function scrapeImperial(page) {
 }
 
 // ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
+// Les 3 jackpots sont dans le _payload.json Nuxt chargé au démarrage de la page.
+// Format dans le payload : "NomJeu","MONTANT","bestProgressiveJackpot"
+// On intercepte ce payload et on extrait les données sans attendre le carousel.
 async function scrapeBarriere(page) {
-  await sleep(4000);
-  const grab = () => page.evaluate(() => {
-    const clean = (raw) => {
-      const d = (raw || '').replace(/[^\d]/g, '');
-      if (!d || parseInt(d, 10) < 100) return null;
-      return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
-    };
-    const amtEl  = document.querySelector('.CsnJackpot__amount');
-    const nameEl = document.querySelector('.CsnJackpot__name');
-    if (!amtEl || !nameEl) return null;
-    const amt  = clean(amtEl.textContent.trim());
-    const name = nameEl.textContent.trim().toLowerCase();
-    if (!amt) return null;
-    // "minor blackjack" → minor, "blackjack" seul → major, "ultimate" → ultimate
-    if (name.includes('minor')) return { type: 'blackjack_minor', amt };
-    if (name.includes('blackjack') || name.includes('black jack')) return { type: 'blackjack_major', amt };
-    if (name.includes('ultimate') || name.includes('hold')) return { type: 'ultimate', amt };
-    return { type: 'unknown_' + name.slice(0,20), amt }; // log pour debug
+  let payloadBody = null;
+
+  page.on('response', async (response) => {
+    if (response.url().includes('_payload.json')) {
+      try { payloadBody = await response.text(); } catch (e) {}
+    }
   });
-  const collected = { blackjack_minor: null, blackjack_major: null, ultimate: null };
-  // Ne jamais s'arrêter tôt : laisser tourner 40s pour voir défiler les 3 jackpots
-  const deadline = Date.now() + 40000;
-  while (Date.now() < deadline) {
-    const snap = await grab().catch(() => null);
-    if (snap) collected[snap.type] = snap.amt;
-    await sleep(700);
+
+  await page.goto('https://www.casinosbarriere.com/paris', {
+    waitUntil: 'networkidle2', timeout: 60000
+  });
+
+  if (!payloadBody) throw new Error('Barriere: _payload.json non capturé');
+
+  const clean = (raw) => {
+    if (!raw) return null;
+    const d = raw.replace(/[^\d]/g, '');
+    if (!d || parseInt(d, 10) < 100) return null;
+    return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
+  };
+
+  // Extraire tous les triplets : "NomJeu","MONTANT","bestProgressiveJackpot"
+  const regex = /"([^"]+)","(\d+)","bestProgressiveJackpot"/g;
+  const jackpots = {};
+  let m;
+  while ((m = regex.exec(payloadBody)) !== null) {
+    jackpots[m[1].toLowerCase()] = m[2];
   }
-  return collected;
+  console.log('  Barriere jackpots bruts:', JSON.stringify(jackpots));
+
+  let ultimate = null, blackjack_major = null, blackjack_minor = null;
+  for (const [name, amount] of Object.entries(jackpots)) {
+    if (name.includes('ultimate') || name.includes('hold'))      ultimate        = clean(amount);
+    else if (name.includes('minor'))                              blackjack_minor = clean(amount);
+    else if (name.includes('black') || name.includes('jack'))    blackjack_major = clean(amount);
+  }
+
+  return { ultimate, blackjack_major, blackjack_minor };
 }
 
 // ─── 3. Paris Élysées Club ────────────────────────────────────────────────────
@@ -99,10 +112,6 @@ async function scrapeElysees(page) {
 }
 
 // ─── 4. Club Circus Paris ─────────────────────────────────────────────────────
-// Compteurs animés : chaque chiffre est dans un <span> séparé.
-// element.textContent colle tous les chiffres → illisible.
-// Solution : TreeWalker sur les noeuds TEXTE bruts pour lire chaque span
-// individuellement, puis reconstituer les nombres par conteneur parent.
 async function scrapeCircus(page) {
   await sleep(7000);
   return page.evaluate(() => {
@@ -111,7 +120,6 @@ async function scrapeCircus(page) {
 
     const amounts = new Set();
 
-    // ── Stratégie 1 : attributs data-* portant la valeur cible du compteur ──
     intro.querySelectorAll('*').forEach(el => {
       ['value','target','count','number','amount','final'].forEach(attr => {
         const v = el.dataset[attr];
@@ -121,30 +129,23 @@ async function scrapeCircus(page) {
       });
     });
 
-    // ── Stratégie 2 : TreeWalker sur les noeuds texte bruts ──
-    // Chaque span d'un compteur contient UN chiffre → on remonte au parent
-    // commun pour reconstituer le nombre complet
     const seen = new WeakSet();
     const walker = document.createTreeWalker(intro, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
       const t = node.textContent.trim();
-      // Noeud texte contenant uniquement des chiffres/virgule/point/espace
       if (!/^[\d\s.,]+$/.test(t) || t.length === 0) continue;
 
-      // Remonter au parent englobant (jusqu'à 4 niveaux) et lire son innerText
       let el = node.parentElement;
       for (let i = 0; i < 4 && el && el !== intro; i++, el = el.parentElement) {
         if (seen.has(el)) continue;
         seen.add(el);
         const raw = el.innerText || el.textContent || '';
-        // Chercher le format "XX XXX,XX" (avec ou sans espace, séparateur virgule)
         const matches = [...raw.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
         matches.forEach(m => {
           const n = parseInt(m[1].replace(/[\s.]/g, ''), 10);
           if (n > 1000 && n < 10000000) amounts.add(n);
         });
-        // Aussi chercher juste de grands entiers si pas de virgule
         const intMatches = [...raw.matchAll(/\b(\d{2}\s?\d{3})\b/g)];
         intMatches.forEach(m => {
           const n = parseInt(m[1].replace(/\s/g, ''), 10);
@@ -153,7 +154,6 @@ async function scrapeCircus(page) {
       }
     }
 
-    // ── Stratégie 3 : fallback texte brut de toute la section #intro ──
     if (amounts.size < 2) {
       const raw = intro.innerText || intro.textContent || '';
       const matches = [...raw.matchAll(/(\d[\d\s.]*),(\d{2})/g)];
@@ -219,42 +219,30 @@ async function scrapePierreCharron(page) {
 }
 
 // ─── 6. Club Montmartre Paris ─────────────────────────────────────────────────
-// Structure exacte : div.jk-card > div.jk-meter
-//   span.jk-meter-label  → "Mega Jackpot" / "Minor"
-//   span.jk-meter-amount → "53 623,40 €"
-// 2 cartes "Mega Jackpot" (Blackjack + Ultimate) + 1 "Minor"
-// Toutes dans le DOM simultanément
-
 async function scrapeMontmartre(page) {
   await sleep(4000);
   return page.evaluate(() => {
     const clean = (raw) => {
       if (!raw) return null;
-      // Format "53 623,40 €" → garder uniquement la partie entière
       const m = raw.match(/([\d\s]+),\d{2}/);
       if (m) {
         const n = parseInt(m[1].replace(/\s/g, ''), 10);
         if (n < 100) return null;
         return n.toLocaleString('fr-FR') + ' €';
       }
-      // Fallback entier simple
       const d = raw.replace(/[^\d]/g, '');
       if (!d || parseInt(d, 10) < 100) return null;
       return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
     };
 
     const result = { mega_blackjack: null, mega_ultimate: null, minor: null };
-    const megaAmounts = [];
 
-    // Minor : sélecteur direct sur la classe .minor
     const minorEl = document.querySelector('span.jk-meter-amount.minor');
     if (minorEl) result.minor = clean(minorEl.textContent.trim());
 
-    // Mega Jackpots : parcourir les jk-cards qui ont un label "Mega Jackpot"
     let megaIndex = 0;
     document.querySelectorAll('div.jk-card').forEach(card => {
       const labelEl = card.querySelector('span.jk-meter-label');
-      // Prendre le montant non-minor (le Mega)
       const amtEl = card.querySelector('span.jk-meter-amount:not(.minor)');
       if (!labelEl || !amtEl) return;
 
@@ -263,8 +251,6 @@ async function scrapeMontmartre(page) {
       if (!amt) return;
 
       if (label.includes('mega') || label.includes('jackpot')) {
-        // Position dans le DOM = discriminant stable :
-        // Card #0 = Ultimate, Card #1 = Blackjack Major
         if (megaIndex === 0) result.mega_ultimate  = amt;
         if (megaIndex === 1) result.mega_blackjack = amt;
         megaIndex++;
@@ -289,12 +275,15 @@ async function scrapeClubOnce(browser, club) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    await page.setRequestInterception(true);
-    page.on('request', req => {
-      if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
-      else req.continue();
-    });
-    const timeout  = club.id === 'pierrecharron' ? 90000 : 45000;
+    // Barrière : ne pas bloquer les requêtes réseau car on a besoin du payload.json
+    if (club.id !== 'barriere') {
+      await page.setRequestInterception(true);
+      page.on('request', req => {
+        if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
+        else req.continue();
+      });
+    }
+    const timeout   = club.id === 'pierrecharron' ? 90000 : 60000;
     const waitUntil = club.id === 'pierrecharron' ? 'domcontentloaded' : 'networkidle2';
     await page.goto(club.url, { waitUntil, timeout });
     return await club.scrapeFn(page);
@@ -325,7 +314,6 @@ async function scrapeClub(browser, club) {
 async function main() {
   console.log('🎰  Jackpots Paris — ' + new Date().toISOString());
 
-  // Charger les dernières valeurs connues pour conserver les données en cas d'échec
   const outPath = path.join(DATA_DIR, 'latest.json');
   let previousResults = {};
   try {
@@ -345,11 +333,10 @@ async function main() {
     const result = await scrapeClub(browser, club);
 
     if (!result.ok && previousResults[club.id] && previousResults[club.id].ok) {
-      // Échec : conserver les dernières valeurs connues avec un flag
       console.log(`  ↩  Échec — conservation des dernières valeurs connues pour ${club.name}`);
       results[club.id] = {
         ok: false,
-        stale: true, // données anciennes
+        stale: true,
         error: result.error,
         data: previousResults[club.id].data
       };

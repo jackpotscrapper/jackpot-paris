@@ -43,9 +43,8 @@ async function scrapeImperial(page) {
 }
 
 // ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
-// Les 3 jackpots sont dans le _payload.json Nuxt chargé au démarrage de la page.
-// Format dans le payload : "NomJeu","MONTANT","bestProgressiveJackpot"
-// On intercepte ce payload et on extrait les données sans attendre le carousel.
+// Les jackpots sont dans le _payload.json Nuxt (tableau aplati).
+// Format : "NomJeu","MONTANT" en paires adjacentes dans le JSON.
 async function scrapeBarriere(page) {
   let payloadBody = null;
 
@@ -68,20 +67,27 @@ async function scrapeBarriere(page) {
     return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
   };
 
-  // Extraire tous les triplets : "NomJeu","MONTANT","bestProgressiveJackpot"
-  const regex = /"([^"]+)","(\d+)","bestProgressiveJackpot"/g;
   const jackpots = {};
+
+  // Chercher toutes les paires "NomJeu","MONTANT" dans le payload Nuxt aplati.
+  // Le nom peut contenir apostrophes et accents (ex: "Ultimate Texas Hold'Em")
+  const regex = /"([^"]{3,50})","(\d{4,6})"/g;
   let m;
   while ((m = regex.exec(payloadBody)) !== null) {
-    jackpots[m[1].toLowerCase()] = m[2];
+    const name = m[1].toLowerCase();
+    if (name.includes('black') || name.includes('ultimate') ||
+        name.includes('minor') || name.includes('hold')) {
+      jackpots[name] = m[2];
+    }
   }
+
   console.log('  Barriere jackpots bruts:', JSON.stringify(jackpots));
 
   let ultimate = null, blackjack_major = null, blackjack_minor = null;
   for (const [name, amount] of Object.entries(jackpots)) {
-    if (name.includes('ultimate') || name.includes('hold'))      ultimate        = clean(amount);
-    else if (name.includes('minor'))                              blackjack_minor = clean(amount);
-    else if (name.includes('black') || name.includes('jack'))    blackjack_major = clean(amount);
+    if (name.includes('ultimate') || name.includes('hold'))    ultimate        = clean(amount);
+    else if (name.includes('minor'))                           blackjack_minor = clean(amount);
+    else if (name.includes('black') || name.includes('jack')) blackjack_major = clean(amount);
   }
 
   return { ultimate, blackjack_major, blackjack_minor };
@@ -135,7 +141,6 @@ async function scrapeCircus(page) {
     while ((node = walker.nextNode())) {
       const t = node.textContent.trim();
       if (!/^[\d\s.,]+$/.test(t) || t.length === 0) continue;
-
       let el = node.parentElement;
       for (let i = 0; i < 4 && el && el !== intro; i++, el = el.parentElement) {
         if (seen.has(el)) continue;
@@ -245,11 +250,9 @@ async function scrapeMontmartre(page) {
       const labelEl = card.querySelector('span.jk-meter-label');
       const amtEl = card.querySelector('span.jk-meter-amount:not(.minor)');
       if (!labelEl || !amtEl) return;
-
       const label = labelEl.textContent.trim().toLowerCase();
       const amt   = clean(amtEl.textContent.trim());
       if (!amt) return;
-
       if (label.includes('mega') || label.includes('jackpot')) {
         if (megaIndex === 0) result.mega_ultimate  = amt;
         if (megaIndex === 1) result.mega_blackjack = amt;
@@ -275,7 +278,7 @@ async function scrapeClubOnce(browser, club) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    // Barrière : ne pas bloquer les requêtes réseau car on a besoin du payload.json
+    // Barrière : ne pas bloquer les requêtes — on a besoin du _payload.json
     if (club.id !== 'barriere') {
       await page.setRequestInterception(true);
       page.on('request', req => {

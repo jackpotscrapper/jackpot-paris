@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-16T05:38:59.631Z",
+  "ts": "2026-06-16T06:09:07.567Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -20,8 +20,8 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": "33 976 €",
-        "ultimate": "32 674 €"
+        "blackjack": "34 342 €",
+        "ultimate": "34 846 €"
       }
     },
     "circus": {
@@ -42,9 +42,9 @@
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_blackjack": "18 339 €",
+        "mega_blackjack": "18 340 €",
         "mega_ultimate": "80 319 €",
-        "minor": "6 622 €"
+        "minor": "6 623 €"
       }
     }
   }

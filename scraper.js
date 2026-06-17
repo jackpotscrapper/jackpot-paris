@@ -296,7 +296,8 @@ async function scrapeClubOnce(browser, club) {
 }
 
 async function scrapeClub(browser, club) {
-  const maxRetries = 2;
+  const maxRetries = club.id === 'pierrecharron' ? 3 : 2;
+  const retryDelay = club.id === 'pierrecharron' ? 10000 : 5000;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`  → ${club.url}${attempt > 1 ? ' (tentative ' + attempt + ')' : ''}`);
@@ -308,8 +309,8 @@ async function scrapeClub(browser, club) {
       if (attempt === maxRetries) {
         return { ok: false, error: err.message, data: {} };
       }
-      console.log(`  ↻ Nouvelle tentative dans 5s...`);
-      await sleep(5000);
+      console.log(`  ↻ Nouvelle tentative dans ${retryDelay / 1000}s...`);
+      await sleep(retryDelay);
     }
   }
 }

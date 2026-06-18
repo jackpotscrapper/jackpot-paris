@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-18T08:11:30.064Z",
+  "ts": "2026-06-18T08:41:50.162Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,13 +27,13 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "12 579 €",
-        "blazing_blackjack": "8 405 €"
+        "uth_progressive": "12 566 €",
+        "blazing_blackjack": "8 105 €"
       }
     },
     "pierrecharron": {
       "ok": false,
-      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
+      "error": "Navigation timeout of 90000 ms exceeded",
       "data": {}
     },
     "montmartre": {

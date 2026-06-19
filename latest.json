@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-19T10:12:58.132Z",
+  "ts": "2026-06-19T10:42:56.396Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -12,9 +12,9 @@
     "barriere": {
       "ok": true,
       "data": {
-        "ultimate": "6 658 €",
-        "blackjack_major": "113 046 €",
-        "blackjack_minor": "12 015 €"
+        "ultimate": "8 082 €",
+        "blackjack_major": "116 820 €",
+        "blackjack_minor": "15 447 €"
       }
     },
     "elyseesclub": {
@@ -36,7 +36,7 @@
       "data": {
         "blackjack_minor": "17 771 €",
         "blackjack_major": "15 925 €",
-        "ultimate": "11 676 €"
+        "ultimate": "11 719 €"
       }
     },
     "montmartre": {

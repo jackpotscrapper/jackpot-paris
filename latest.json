@@ -1,12 +1,12 @@
 {
-  "ts": "2026-06-21T22:00:17.362Z",
+  "ts": "2026-06-21T22:30:33.839Z",
   "results": {
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "9 226 €",
-        "blackjack_major": "3 717 €",
-        "ultimate": "19 427 €"
+        "blackjack_minor": "9 580 €",
+        "blackjack_major": "4 040 €",
+        "ultimate": "20 105 €"
       }
     },
     "barriere": {
@@ -39,9 +39,9 @@
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_blackjack": "20 225 €",
-        "mega_ultimate": "93 579 €",
-        "minor": "8 336 €"
+        "mega_blackjack": "20 252 €",
+        "mega_ultimate": "93 737 €",
+        "minor": "8 361 €"
       }
     }
   }

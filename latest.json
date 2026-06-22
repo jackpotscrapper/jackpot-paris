@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-22T09:59:10.473Z",
+  "ts": "2026-06-22T10:29:17.116Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -12,9 +12,9 @@
     "barriere": {
       "ok": true,
       "data": {
-        "ultimate": "8 082 €",
-        "blackjack_major": "116 820 €",
-        "blackjack_minor": "15 447 €"
+        "ultimate": "11 534 €",
+        "blackjack_major": "128 342 €",
+        "blackjack_minor": "6 400 €"
       }
     },
     "elyseesclub": {
@@ -34,9 +34,9 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "5 816 €",
-        "blackjack_major": "7 179 €",
-        "ultimate": "7 864 €"
+        "blackjack_minor": "5 817 €",
+        "blackjack_major": "7 180 €",
+        "ultimate": "7 876 €"
       }
     },
     "montmartre": {

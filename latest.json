@@ -1,8 +1,10 @@
 {
-  "ts": "2026-06-23T06:03:06.678Z",
+  "ts": "2026-06-23T06:35:14.642Z",
   "results": {
     "imperial": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Navigation timeout of 60000 ms exceeded",
       "data": {
         "blackjack_minor": "10 068 €",
         "blackjack_major": "4 483 €",

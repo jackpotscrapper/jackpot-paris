@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-24T03:13:19.371Z",
+  "ts": "2026-06-24T03:43:24.591Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,24 +27,24 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "14 377 €",
-        "blazing_blackjack": "13 764 €"
+        "uth_progressive": "14 633 €",
+        "blazing_blackjack": "13 887 €"
       }
     },
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "2 135 €",
-        "blackjack_major": "5 278 €",
-        "ultimate": "11 160 €"
+        "blackjack_minor": "2 137 €",
+        "blackjack_major": "5 280 €",
+        "ultimate": "11 227 €"
       }
     },
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_blackjack": "21 365 €",
-        "mega_ultimate": "101 557 €",
-        "minor": "9 373 €"
+        "mega_blackjack": "21 376 €",
+        "mega_ultimate": "101 703 €",
+        "minor": "9 383 €"
       }
     }
   }

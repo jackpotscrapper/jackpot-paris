@@ -70,7 +70,6 @@ async function scrapeBarriere(page) {
   const jackpots = {};
 
   // Chercher toutes les paires "NomJeu","MONTANT" dans le payload Nuxt aplati.
-  // Le nom peut contenir apostrophes et accents (ex: "Ultimate Texas Hold'Em")
   const regex = /"([^"]{3,50})","(\d{4,6})"/g;
   let m;
   while ((m = regex.exec(payloadBody)) !== null) {
@@ -224,44 +223,60 @@ async function scrapePierreCharron(page) {
 }
 
 // ─── 6. Club Montmartre Paris ─────────────────────────────────────────────────
+// Les jackpots sont chargés via un appel API externe : /api/AtlasSign/GetMeters
+// L'URL de base est un tunnel Cloudflare (dynamique) — on intercepte la réponse.
 async function scrapeMontmartre(page) {
-  await sleep(4000);
-  return page.evaluate(() => {
-    const clean = (raw) => {
-      if (!raw) return null;
-      const m = raw.match(/([\d\s]+),\d{2}/);
-      if (m) {
-        const n = parseInt(m[1].replace(/\s/g, ''), 10);
-        if (n < 100) return null;
-        return n.toLocaleString('fr-FR') + ' €';
-      }
-      const d = raw.replace(/[^\d]/g, '');
-      if (!d || parseInt(d, 10) < 100) return null;
-      return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
-    };
+  let metersData = null;
 
-    const result = { mega_blackjack: null, mega_ultimate: null, minor: null };
-
-    const minorEl = document.querySelector('span.jk-meter-amount.minor');
-    if (minorEl) result.minor = clean(minorEl.textContent.trim());
-
-    let megaIndex = 0;
-    document.querySelectorAll('div.jk-card').forEach(card => {
-      const labelEl = card.querySelector('span.jk-meter-label');
-      const amtEl = card.querySelector('span.jk-meter-amount:not(.minor)');
-      if (!labelEl || !amtEl) return;
-      const label = labelEl.textContent.trim().toLowerCase();
-      const amt   = clean(amtEl.textContent.trim());
-      if (!amt) return;
-      if (label.includes('mega') || label.includes('jackpot')) {
-        if (megaIndex === 0) result.mega_ultimate  = amt;
-        if (megaIndex === 1) result.mega_blackjack = amt;
-        megaIndex++;
-      }
-    });
-
-    return result;
+  page.on('response', async (response) => {
+    if (response.url().includes('AtlasSign/GetMeters')) {
+      try {
+        const text = await response.text();
+        metersData = JSON.parse(text);
+      } catch (e) {}
+    }
   });
+
+  await page.goto('https://www.clubmontmartre-paris.com/', {
+    waitUntil: 'networkidle2', timeout: 60000
+  });
+
+  // Attendre un peu au cas où l'appel API arrive après networkidle2
+  await sleep(3000);
+
+  if (!metersData) throw new Error('Montmartre: GetMeters non capturé');
+
+  const clean = (formattedValue) => {
+    if (!formattedValue) return null;
+    // Format source : "105.284,90 €" → on garde la partie entière en fr-FR
+    const n = parseInt(formattedValue.replace(/[^\d]/g, ''), 10);
+    if (!n || n < 100) return null;
+    // Diviser par 100 car la valeur est en centimes (Value=10528490 → 105 284,90 €)
+    return Math.floor(n / 100).toLocaleString('fr-FR') + ' €';
+  };
+
+  const groups = metersData['$values'] || [];
+  const result = { mega_ultimate: null, mega_blackjack: null, minor: null };
+
+  for (const group of groups) {
+    const name = (group.MeterGroupName || '').toLowerCase();
+    const meters = group.liveMeters?.['$values'] || [];
+
+    for (const meter of meters) {
+      const formatted = meter.FormattedValue || '';
+      const amount = clean(formatted);
+
+      if (name.includes('ultimate') || name.includes('hold')) {
+        result.mega_ultimate = amount;
+      } else if (name.includes('blazing') || name.includes('blackjack') || name.includes('black')) {
+        if (meter.MeterIndex === 1) result.mega_blackjack = amount;
+        if (meter.MeterIndex === 2) result.minor = amount;
+      }
+    }
+  }
+
+  console.log('  Montmartre meters bruts:', JSON.stringify(result));
+  return result;
 }
 
 // ─── Scraper principal ────────────────────────────────────────────────────────
@@ -278,8 +293,9 @@ async function scrapeClubOnce(browser, club) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    // Barrière : ne pas bloquer les requêtes — on a besoin du _payload.json
-    if (club.id !== 'barriere') {
+    // Barrière et Montmartre : ne pas bloquer les requêtes réseau
+    // (Barrière a besoin du _payload.json, Montmartre de l'appel GetMeters)
+    if (club.id !== 'barriere' && club.id !== 'montmartre') {
       await page.setRequestInterception(true);
       page.on('request', req => {
         if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();

@@ -16,9 +16,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Installation de Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
       - name: Installation des dépendances
         run: npm install
       - name: Lancement du diagnostic
         env:
           DIAGNOSE_URL: ${{ github.event.inputs.url }}
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+          PUPPETEER_EXECUTABLE_PATH: '/usr/bin/google-chrome-stable'
         run: node diagnose.js

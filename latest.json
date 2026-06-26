@@ -1,12 +1,12 @@
 {
-  "ts": "2026-06-26T05:53:41.604Z",
+  "ts": "2026-06-26T06:23:00.233Z",
   "results": {
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "3 372 €",
-        "blackjack_major": "1 519 €",
-        "ultimate": "25 229 €"
+        "blackjack_minor": "3 623 €",
+        "blackjack_major": "1 748 €",
+        "ultimate": "26 206 €"
       }
     },
     "barriere": {
@@ -20,15 +20,15 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": "38 144 €",
-        "ultimate": "52 778 €"
+        "blackjack": "38 279 €",
+        "ultimate": "54 248 €"
       }
     },
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "16 933 €",
-        "blazing_blackjack": "14 338 €"
+        "uth_progressive": "17 099 €",
+        "blazing_blackjack": "14 359 €"
       }
     },
     "pierrecharron": {
@@ -43,7 +43,7 @@
       "ok": true,
       "data": {
         "mega_ultimate": "109 118 €",
-        "mega_blackjack": "22 472 €",
+        "mega_blackjack": "22 473 €",
         "minor": "10 380 €"
       }
     }

@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-27T06:07:12.674Z",
+  "ts": "2026-06-27T06:33:37.469Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -32,9 +32,7 @@
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "Navigation timeout of 90000 ms exceeded",
+      "ok": true,
       "data": {
         "blackjack_minor": "2 942 €",
         "blackjack_major": "6 165 €",

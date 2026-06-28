@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-28T13:39:16.456Z",
+  "ts": "2026-06-28T14:09:15.503Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,7 +27,7 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "20 390 €",
+        "uth_progressive": "20 367 €",
         "blazing_blackjack": "15 131 €"
       }
     },
@@ -36,7 +36,7 @@
       "data": {
         "blackjack_minor": "3 419 €",
         "blackjack_major": "6 691 €",
-        "ultimate": "20 154 €"
+        "ultimate": "20 202 €"
       }
     },
     "montmartre": {

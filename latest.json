@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-29T17:52:01.958Z",
+  "ts": "2026-06-29T18:18:14.508Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,24 +27,22 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "21 605 €",
+        "uth_progressive": "21 594 €",
         "blazing_blackjack": "15 455 €"
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
+      "ok": true,
       "data": {
-        "blackjack_minor": "3 917 €",
-        "blackjack_major": "7 239 €",
-        "ultimate": "22 930 €"
+        "blackjack_minor": "3 929 €",
+        "blackjack_major": "7 252 €",
+        "ultimate": "23 068 €"
       }
     },
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "121 751 €",
+        "mega_ultimate": "121 799 €",
         "mega_blackjack": "24 513 €",
         "minor": "12 235 €"
       }

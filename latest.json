@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-29T09:20:21.872Z",
+  "ts": "2026-06-29T09:46:37.285Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -27,14 +27,12 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "21 594 €",
-        "blazing_blackjack": "15 397 €"
+        "uth_progressive": "21 397 €",
+        "blazing_blackjack": "15 289 €"
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "Navigation timeout of 90000 ms exceeded",
+      "ok": true,
       "data": {
         "blackjack_minor": "3 855 €",
         "blackjack_major": "7 170 €",

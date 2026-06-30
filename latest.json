@@ -1,5 +1,5 @@
 {
-  "ts": "2026-06-30T21:27:21.584Z",
+  "ts": "2026-06-30T21:57:27.001Z",
   "results": {
     "imperial": {
       "ok": true,
@@ -39,9 +39,9 @@
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "127 330 €",
-        "mega_blackjack": "25 087 €",
-        "minor": "12 757 €"
+        "mega_ultimate": "127 572 €",
+        "mega_blackjack": "25 104 €",
+        "minor": "12 772 €"
       }
     }
   }

@@ -279,8 +279,61 @@ async function scrapeMontmartre(page) {
   return result;
 }
 
+// ─── 7. Partouche Pasino Club ─────────────────────────────────────────────────
+// Jackpots via l'API appolonia-api.partouche.com (site_id 00066).
+// Le nom du jeu est dans le champ "name" de la réponse, pas dans le path de
+// l'URL (trompeur : /uth/ retourne en fait les compteurs Blackjack "Blazing 7's").
+// Ultimate Poker : endpoint pas encore branché côté Partouche (club ouvert le
+// 12/05/2026) — renvoie null en attendant, sans faire échouer le scrape.
+async function scrapePasino(page) {
+  const responses = [];
+
+  page.on('response', async (response) => {
+    if (response.url().includes('appolonia-api.partouche.com/site/00066') &&
+        response.url().includes('progressive/amount')) {
+      try {
+        const json = await response.json();
+        responses.push(json);
+      } catch (e) {}
+    }
+  });
+
+  await page.goto('https://www.partouchepasinoclub.com/', {
+    waitUntil: 'networkidle2', timeout: 60000
+  });
+
+  await sleep(3000);
+
+  const clean = (value) => {
+    if (typeof value !== 'number' || value < 100) return null;
+    return Math.floor(value).toLocaleString('fr-FR') + ' €';
+  };
+
+  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+
+  for (const json of responses) {
+    const entry = json?.data?.[0];
+    if (!entry?.meters) continue;
+    const name = (entry.name || '').toLowerCase();
+    if (name.includes('blazing') || name.includes('black')) {
+      result.blackjack_major = clean(entry.meters[0]?.value);
+      result.blackjack_minor = clean(entry.meters[1]?.value);
+    } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
+      result.ultimate = clean(entry.meters[0]?.value);
+    }
+  }
+
+  if (!result.blackjack_major) {
+    throw new Error('Pasino: aucun jackpot capturé');
+  }
+
+  console.log('  Pasino jackpots bruts:', JSON.stringify(result));
+  return result;
+}
+
 // ─── Scraper principal ────────────────────────────────────────────────────────
 const clubs = [
+  { id: 'pasino',        name: 'Partouche Pasino Club',  url: 'https://www.partouchepasinoclub.com/',          scrapeFn: scrapePasino },
   { id: 'imperial',      name: 'Imperial Club Paris',    url: 'https://imperialclubparis.com/',                scrapeFn: scrapeImperial },
   { id: 'barriere',      name: 'Club Barrière Paris',    url: 'https://www.casinosbarriere.com/paris',         scrapeFn: scrapeBarriere },
   { id: 'elyseesclub',   name: 'Paris Élysées Club',     url: 'https://www.pariselyseesclub.com/',             scrapeFn: scrapeElysees },
@@ -295,7 +348,7 @@ async function scrapeClubOnce(browser, club) {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
     // Barrière et Montmartre : ne pas bloquer les requêtes réseau
     // (Barrière a besoin du _payload.json, Montmartre de l'appel GetMeters)
-    if (club.id !== 'barriere' && club.id !== 'montmartre') {
+    if (club.id !== 'barriere' && club.id !== 'montmartre' && club.id !== 'pasino') {
       await page.setRequestInterception(true);
       page.on('request', req => {
         if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();

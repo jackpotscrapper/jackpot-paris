@@ -514,9 +514,12 @@ async function fetchLatest() {
   }
 }
 
-// Premier chargement + auto-refresh toutes les 60s
+// Premier chargement + auto-refresh toutes les 5 min
+// (le scraping backend ne tourne de toute façon que toutes les 30 min,
+// un refresh plus fréquent ne fait qu'appeler l'API pour rien et
+// empêche Render de mettre le service en veille entre deux pings)
 fetchLatest();
-setInterval(fetchLatest, 60_000);
+setInterval(fetchLatest, 5 * 60_000);
 </script>
 </body>
 </html>

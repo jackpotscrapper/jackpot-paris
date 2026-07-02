@@ -202,10 +202,21 @@
       transition: color .2s;
     }
 
+    .card-name a::after {
+      content: ' ↗';
+      font-size: .75em;
+      opacity: .55;
+      transition: opacity .2s;
+    }
+
     .card-name a:hover {
       color: var(--gold);
       text-decoration: underline;
       text-underline-offset: 3px;
+    }
+
+    .card-name a:hover::after {
+      opacity: 1;
     }
 
     /* ── Jackpot row ── */
@@ -440,6 +451,7 @@ function render(data) {
     nameLink.href = config.url;
     nameLink.target = '_blank';
     nameLink.rel = 'noopener noreferrer';
+    nameLink.title = 'Visiter le site officiel';
     nameLink.textContent = config.name;
     nameEl.appendChild(nameLink);
     card.appendChild(nameEl);

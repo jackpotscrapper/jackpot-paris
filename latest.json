@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-04T06:19:35.791Z",
+  "ts": "2026-07-04T06:46:02.459Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -35,14 +35,12 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "26 777 €",
-        "blazing_blackjack": "16 772 €"
+        "uth_progressive": "26 616 €",
+        "blazing_blackjack": "16 678 €"
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
+      "ok": true,
       "data": {
         "blackjack_minor": "3 841 €",
         "blackjack_major": "9 849 €",

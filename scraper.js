@@ -43,14 +43,25 @@ async function scrapeImperial(page) {
 }
 
 // ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
-// Les jackpots sont dans le _payload.json Nuxt (tableau aplati).
-// Format : "NomJeu","MONTANT" en paires adjacentes dans le JSON.
+// Site refondu (été 2026) : toujours du Nuxt, mais payload Nuxt 3 (format
+// "devalue" imbriqué, plus l'ancien tableau JSON plat de Nuxt 2). Le carousel
+// visuel qui affiche les jackpots un par un ne tourne pas de façon fiable
+// sous Puppeteer (probablement lié à une vidéo de fond par slide) — on
+// ignore complètement l'animation et on lit directement les jackpots
+// progressifs déjà présents dans le payload au chargement :
+// Majeur | BlackJack, Mineur | BlackJack, Ultimate Texas Hold'Em.
+// (Il existe aussi un "Royale | BlackJack" dans le payload, volontairement ignoré.)
+// Comme le payload est capturé sur /paris (page dédiée à ce club), pas besoin
+// de filtrer par ville.
 async function scrapeBarriere(page) {
   let payloadBody = null;
 
   page.on('response', async (response) => {
     if (response.url().includes('_payload.json')) {
-      try { payloadBody = await response.text(); } catch (e) {}
+      try {
+        const text = await response.text();
+        if (!payloadBody || text.length > payloadBody.length) payloadBody = text;
+      } catch (e) {}
     }
   });
 
@@ -58,38 +69,44 @@ async function scrapeBarriere(page) {
     waitUntil: 'networkidle2', timeout: 60000
   });
 
+  await sleep(2000);
+
   if (!payloadBody) throw new Error('Barriere: _payload.json non capturé');
 
   const clean = (raw) => {
-    if (!raw) return null;
-    const d = raw.replace(/[^\d]/g, '');
-    if (!d || parseInt(d, 10) < 100) return null;
-    return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
+    const num = parseFloat(raw);
+    if (isNaN(num) || num < 100) return null;
+    return Math.floor(num).toLocaleString('fr-FR') + ' €';
   };
 
-  const jackpots = {};
+  // Chaque jackpot suit ce schéma dans le payload aplati :
+  // "Nom du jackpot","montant.brut",{"_uid":N,"name":N+1,"amount":N+2,"component":289}
+  // (le jackpot "vedette" a un tag texte en plus avant l'objet - géré par le (?:...)? optionnel)
+  const regex = /"([^"]{3,60})","(\d+(?:\.\d+)?)",(?:"[a-zA-Z]+",)?\{"_uid":\d+,"name":\d+,"amount":\d+,"component":289\}/g;
 
-  // Chercher toutes les paires "NomJeu","MONTANT" dans le payload Nuxt aplati.
-  const regex = /"([^"]{3,50})","(\d{4,6})"/g;
+  const result = {
+    ultimate: null,
+    blackjack_major: null,
+    blackjack_minor: null,
+  };
+
   let m;
   while ((m = regex.exec(payloadBody)) !== null) {
     const name = m[1].toLowerCase();
-    if (name.includes('black') || name.includes('ultimate') ||
-        name.includes('minor') || name.includes('hold')) {
-      jackpots[name] = m[2];
-    }
+    const amount = m[2];
+    if (name.includes('ultimate') || name.includes('hold'))     result.ultimate = clean(amount);
+    else if (name.includes('majeur'))                            result.blackjack_major = clean(amount);
+    else if (name.includes('mineur'))                            result.blackjack_minor = clean(amount);
+    // 'royale' volontairement ignoré
   }
 
-  console.log('  Barriere jackpots bruts:', JSON.stringify(jackpots));
+  console.log('  Barriere jackpots bruts:', JSON.stringify(result));
 
-  let ultimate = null, blackjack_major = null, blackjack_minor = null;
-  for (const [name, amount] of Object.entries(jackpots)) {
-    if (name.includes('ultimate') || name.includes('hold'))    ultimate        = clean(amount);
-    else if (name.includes('minor'))                           blackjack_minor = clean(amount);
-    else if (name.includes('black') || name.includes('jack')) blackjack_major = clean(amount);
+  if (!result.blackjack_major && !result.blackjack_minor) {
+    throw new Error('Barriere: aucun jackpot capturé');
   }
 
-  return { ultimate, blackjack_major, blackjack_minor };
+  return result;
 }
 
 // ─── 3. Paris Élysées Club ────────────────────────────────────────────────────

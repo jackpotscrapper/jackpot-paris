@@ -1,17 +1,19 @@
 // Script de diagnostic ponctuel — Club Barrière Paris
-// Version compatible GitHub Actions (headless, pas d'écran nécessaire).
-// On masque navigator.webdriver avant chargement pour tester l'hypothèse
-// de détection de bot, et on observe le carousel plus longtemps.
+// On abandonne l'idée de faire tourner le carousel. À la place, on récupère
+// le _payload.json brut (chargé au tout début, avant toute animation) et on
+// cherche directement les occurrences de "Paris", "BlackJack", "Ultimate",
+// "Majeur", "Mineur" dedans — si Nuxt envoie bien toutes les données du
+// carousel d'un coup pour l'hydratation, tout devrait être là.
 //
-// Usage dans diagnose.yml : remplace temporairement le contenu de
-// diagnose.js par celui-ci, ou ajoute un step qui exécute ce fichier.
+// Usage dans diagnose.yml : remplace temporairement diagnose.js par ce
+// fichier.
 
 const puppeteer = require('puppeteer');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const WATCH_DURATION_MS = 30000;
-const POLL_INTERVAL_MS = 500;
+const KEYWORDS = ['Paris', 'BlackJack', 'Ultimate', 'Majeur', 'Mineur', 'Jackpot'];
+const CONTEXT_CHARS = 80; // caractères affichés avant/après chaque match
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -21,12 +23,19 @@ const POLL_INTERVAL_MS = 500;
 
   const page = await browser.newPage();
 
-  // Masque le signal le plus courant de détection d'automatisation
-  await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-  });
+  let payloadText = null;
 
-  await page.setViewport({ width: 1280, height: 900 });
+  page.on('response', async (response) => {
+    if (response.url().includes('_payload.json')) {
+      try {
+        const text = await response.text();
+        // On garde le plus gros payload capturé (au cas où il y en ait plusieurs)
+        if (!payloadText || text.length > payloadText.length) {
+          payloadText = text;
+        }
+      } catch (e) {}
+    }
+  });
 
   await page.goto('https://www.casinosbarriere.com/paris', {
     waitUntil: 'networkidle2',
@@ -35,41 +44,27 @@ const POLL_INTERVAL_MS = 500;
 
   await sleep(3000);
 
-  const captureHero = () =>
-    page.evaluate(() => {
-      const h = document.querySelector('.CsnJackpotHero');
-      if (!h) return null;
-      return {
-        amount: h.querySelector('.CsnJackpotHero__amount')?.innerText.trim(),
-        name: h.querySelector('.CsnJackpotHero__name')?.innerText.trim(),
-        city: h.querySelector('.CsnJackpotHero__city')?.innerText.trim(),
-      };
-    });
-
-  const allSeen = [];
-  const seenKeys = new Set();
-  let elapsedMs = 0;
-
-  while (elapsedMs < WATCH_DURATION_MS) {
-    const hero = await captureHero();
-    if (hero?.name) {
-      const key = `${hero.name}|${hero.city}`;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        allSeen.push(hero);
-        console.error(`[+${(elapsedMs / 1000).toFixed(1)}s] Nouveau slide : ${hero.name} — ${hero.amount} — ${hero.city}`);
-      }
-    }
-    await sleep(POLL_INTERVAL_MS);
-    elapsedMs += POLL_INTERVAL_MS;
+  if (!payloadText) {
+    console.log('Aucun _payload.json capturé.');
+    await browser.close();
+    return;
   }
 
-  const parisOnly = allSeen.filter((j) => j.city?.toLowerCase().includes('paris'));
+  console.log(`Payload capturé : ${payloadText.length} caractères\n`);
 
-  console.log('\n=== TOUS LES SLIDES VUS ===');
-  console.log(JSON.stringify(allSeen, null, 2));
-  console.log('\n=== PARIS UNIQUEMENT ===');
-  console.log(JSON.stringify(parisOnly, null, 2));
+  for (const keyword of KEYWORDS) {
+    const regex = new RegExp(keyword, 'gi');
+    let match;
+    let count = 0;
+    console.log(`\n--- Occurrences de "${keyword}" ---`);
+    while ((match = regex.exec(payloadText)) !== null && count < 15) {
+      const start = Math.max(0, match.index - CONTEXT_CHARS);
+      const end = Math.min(payloadText.length, match.index + CONTEXT_CHARS);
+      console.log(`[${match.index}] ...${payloadText.slice(start, end)}...`);
+      count++;
+    }
+    if (count === 0) console.log('(aucune occurrence)');
+  }
 
   await browser.close();
 })();

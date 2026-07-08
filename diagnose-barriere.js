@@ -1,14 +1,20 @@
 // Script de diagnostic ponctuel — Club Barrière Paris
-// Objectif : inspecter le nouveau carousel .CsnJackpotHero (site refondu, Nuxt 3)
-// et ne remonter que les jackpots dont la ville est "Paris".
+// Le carousel défile automatiquement (autoplay), un jackpot à la fois dans
+// le DOM. Ce script ne clique sur rien : il observe le DOM à intervalles
+// réguliers pendant que le carousel tourne tout seul, et collecte chaque
+// jackpot distinct dont la ville est "Paris".
 //
-// Usage local (si tu testes hors GitHub Actions) :
-//   PUPPETEER_EXECUTABLE_PATH=/chemin/vers/chrome node diagnose-barriere.js
-//
-// Usage dans le workflow diagnose.yml : remplace temporairement le contenu
-// de diagnose.js par celui-ci (ou ajoute un step dédié qui l'exécute).
+// Usage : node diagnose-barriere.js
 
 const puppeteer = require('puppeteer');
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Durée totale d'observation et fréquence des captures.
+// Ajuste WATCH_DURATION_MS si le carousel semble avoir plus de slides
+// que ce qui est capturé (essaie 30000 ou 40000).
+const WATCH_DURATION_MS = 20000;
+const POLL_INTERVAL_MS = 1000;
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -23,20 +29,38 @@ const puppeteer = require('puppeteer');
     timeout: 60000,
   });
 
-  // Laisse le temps au carousel de finir de s'hydrater côté client
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await sleep(3000);
 
-  const heroes = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.CsnJackpotHero'))
-      .map((h) => ({
+  const captureHero = () =>
+    page.evaluate(() => {
+      const h = document.querySelector('.CsnJackpotHero');
+      if (!h) return null;
+      return {
         amount: h.querySelector('.CsnJackpotHero__amount')?.innerText.trim(),
         name: h.querySelector('.CsnJackpotHero__name')?.innerText.trim(),
         city: h.querySelector('.CsnJackpotHero__city')?.innerText.trim(),
-      }))
-      .filter((j) => j.city && j.city.toLowerCase().includes('paris'))
-  );
+      };
+    });
 
-  console.log(JSON.stringify(heroes, null, 2));
+  const results = [];
+  const seen = new Set();
+  const elapsed = { ms: 0 };
+
+  while (elapsed.ms < WATCH_DURATION_MS) {
+    const hero = await captureHero();
+    if (hero?.city?.toLowerCase().includes('paris') && hero.name) {
+      const key = `${hero.name}|${hero.city}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        results.push(hero);
+        console.error(`Nouveau slide capturé : ${hero.name} — ${hero.amount}`);
+      }
+    }
+    await sleep(POLL_INTERVAL_MS);
+    elapsed.ms += POLL_INTERVAL_MS;
+  }
+
+  console.log(JSON.stringify(results, null, 2));
 
   await browser.close();
 })();

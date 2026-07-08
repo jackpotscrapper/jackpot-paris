@@ -79,10 +79,12 @@ async function scrapeBarriere(page) {
     return Math.floor(num).toLocaleString('fr-FR') + ' €';
   };
 
-  // Chaque jackpot suit ce schéma dans le payload aplati :
-  // "Nom du jackpot","montant.brut",{"_uid":N,"name":N+1,"amount":N+2,"component":289}
-  // (le jackpot "vedette" a un tag texte en plus avant l'objet - géré par le (?:...)? optionnel)
-  const regex = /"([^"]{3,60})","(\d+(?:\.\d+)?)",(?:"[a-zA-Z]+",)?\{"_uid":\d+,"name":\d+,"amount":\d+,"component":289\}/g;
+  // On ne se fie qu'au couple adjacent "Nom","Montant" — le format "devalue"
+  // de Nuxt 3 ne place pas toujours l'objet descripteur {_uid,...,component:289}
+  // juste après chaque valeur (ex: Mineur, dernier de la liste, est suivi d'un
+  // objet totalement différent). Le filtrage par mot-clé sur le nom suffit à
+  // éviter les faux positifs ailleurs dans le payload.
+  const regex = /"([^"]{3,60})","(\d{2,7}(?:\.\d{1,2})?)"/g;
 
   const result = {
     ultimate: null,

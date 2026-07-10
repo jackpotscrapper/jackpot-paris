@@ -1,8 +1,10 @@
 {
-  "ts": "2026-07-10T07:43:01.844Z",
+  "ts": "2026-07-10T15:20:21.430Z",
   "results": {
     "pasino": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Pasino: aucun jackpot capturé",
       "data": {
         "ultimate": null,
         "blackjack_major": "24 149 €",
@@ -12,17 +14,17 @@
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "3 694 €",
-        "blackjack_major": "9 596 €",
-        "ultimate": "46 830 €"
+        "blackjack_minor": "3 703 €",
+        "blackjack_major": "9 605 €",
+        "ultimate": "46 863 €"
       }
     },
     "barriere": {
       "ok": true,
       "data": {
-        "ultimate": "11 833 €",
-        "blackjack_major": "38 019 €",
-        "blackjack_minor": "29 672 €"
+        "ultimate": "54 322 €",
+        "blackjack_major": "39 158 €",
+        "blackjack_minor": "30 432 €"
       }
     },
     "elyseesclub": {
@@ -42,9 +44,9 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "4 595 €",
-        "blackjack_major": "13 224 €",
-        "ultimate": "15 128 €"
+        "blackjack_minor": "4 663 €",
+        "blackjack_major": "13 298 €",
+        "ultimate": "15 520 €"
       }
     },
     "montmartre": {

@@ -1,10 +1,13 @@
 {
-  "ts": "2026-07-11T09:53:39.187Z",
+  "ts": "2026-07-11T10:21:03.093Z",
   "results": {
     "pasino": {
-      "ok": false,
-      "error": "Pasino: aucun jackpot capturé",
-      "data": {}
+      "ok": true,
+      "data": {
+        "ultimate": null,
+        "blackjack_major": "25 037 €",
+        "blackjack_minor": "8 250 €"
+      }
     },
     "imperial": {
       "ok": true,
@@ -41,7 +44,7 @@
       "data": {
         "blackjack_minor": "5 079 €",
         "blackjack_major": "13 756 €",
-        "ultimate": "17 556 €"
+        "ultimate": "17 562 €"
       }
     },
     "montmartre": {

@@ -1,7 +1,7 @@
 {
   "name": "jackpots-paris",
   "version": "3.0.0",
-  "description": "Scraping automatique des jackpots des 5 clubs de jeux parisiens",
+  "description": "Scraping automatique des jackpots des 7 clubs de jeux parisiens",
   "scripts": {
     "start": "node server.js",
     "scrape": "node scraper.js"
@@ -9,9 +9,11 @@
   "dependencies": {
     "express": "^4.19.2",
     "node-fetch": "^2.7.0",
-    "puppeteer": "^23.0.0"
+    "puppeteer": "^23.0.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

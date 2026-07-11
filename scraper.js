@@ -1,4 +1,6 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 
@@ -320,6 +322,16 @@ async function scrapePasino(page) {
   await page.goto('https://www.partouchepasinoclub.com/', {
     waitUntil: 'networkidle2', timeout: 60000
   });
+
+  // Le site est parfois protégé par un checkpoint anti-bot Vercel qui affiche
+  // une page intermédiaire avant de rediriger vers le vrai contenu. On laisse
+  // le temps au challenge JS de se résoudre et à la redirection de se faire.
+  const title = await page.title();
+  if (title.includes('Security Checkpoint')) {
+    console.log('  ⏳ Pasino: checkpoint anti-bot détecté, attente de résolution...');
+    await sleep(5000);
+    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+  }
 
   await sleep(3000);
 

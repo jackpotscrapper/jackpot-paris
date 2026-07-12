@@ -45,16 +45,6 @@ async function scrapeImperial(page) {
 }
 
 // ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
-// Site refondu (été 2026) : toujours du Nuxt, mais payload Nuxt 3 (format
-// "devalue" imbriqué, plus l'ancien tableau JSON plat de Nuxt 2). Le carousel
-// visuel qui affiche les jackpots un par un ne tourne pas de façon fiable
-// sous Puppeteer (probablement lié à une vidéo de fond par slide) — on
-// ignore complètement l'animation et on lit directement les jackpots
-// progressifs déjà présents dans le payload au chargement :
-// Majeur | BlackJack, Mineur | BlackJack, Ultimate Texas Hold'Em.
-// (Il existe aussi un "Royale | BlackJack" dans le payload, volontairement ignoré.)
-// Comme le payload est capturé sur /paris (page dédiée à ce club), pas besoin
-// de filtrer par ville.
 async function scrapeBarriere(page) {
   let payloadBody = null;
 
@@ -244,8 +234,6 @@ async function scrapePierreCharron(page) {
 }
 
 // ─── 6. Club Montmartre Paris ─────────────────────────────────────────────────
-// Les jackpots sont chargés via un appel API externe : /api/AtlasSign/GetMeters
-// L'URL de base est un tunnel Cloudflare (dynamique) — on intercepte la réponse.
 async function scrapeMontmartre(page) {
   let metersData = null;
 
@@ -415,6 +403,13 @@ async function scrapeClub(browser, club) {
   }
 }
 
+// ─── Historique : conversion valeur formatée "15 062 €" → nombre 15062 ────────
+function toNumber(formatted) {
+  if (!formatted) return null;
+  const digits = String(formatted).replace(/[^\d]/g, '');
+  return digits ? parseInt(digits, 10) : null;
+}
+
 async function main() {
   console.log('🎰  Jackpots Paris — ' + new Date().toISOString());
 
@@ -453,6 +448,22 @@ async function main() {
   const output = { ts: new Date().toISOString(), results };
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2), 'utf-8');
   console.log('\n✅  latest.json sauvegardé');
+
+  // ─── Historique pour les courbes (page privée /historique — voir server.js) ─
+  const historyEntry = { ts: output.ts, clubs: {} };
+  for (const club of clubs) {
+    const r = results[club.id];
+    if (!r) continue;
+    const numericData = {};
+    for (const [key, val] of Object.entries(r.data || {})) {
+      numericData[key] = toNumber(val);
+    }
+    historyEntry.clubs[club.id] = numericData;
+  }
+  const historyPath = path.join(DATA_DIR, 'history.jsonl');
+  fs.appendFileSync(historyPath, JSON.stringify(historyEntry) + '\n', 'utf-8');
+  console.log('✅  history.jsonl mis à jour (+1 ligne)');
+
   console.log(JSON.stringify(output, null, 2));
 }
 

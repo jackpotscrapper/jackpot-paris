@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jackpots Paris — Historique (privé)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root {
+    --gold: #c9a84c; --gold-light: #f0d080; --gold-dim: #7a5e20;
+    --bg: #0a0a0a; --surface: #111111; --border: #2a2a2a;
+    --text: #e8e0cc; --muted: #5a5040;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; padding: 2rem; }
+  h1 { font-family: 'Playfair Display', serif; color: var(--gold-light); font-size: 1.6rem; letter-spacing: .04em; margin-bottom: .3rem; }
+  .subtitle { color: var(--muted); font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 1.8rem; }
+  .controls { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; margin-bottom: 1.5rem; }
+  label { font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: .5rem; }
+  select, .checks { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: .5rem .8rem; font-family: inherit; font-size: .8rem; }
+  .checks { display: flex; gap: 1rem; }
+  .checks label { display: flex; align-items: center; gap: .3rem; text-transform: none; letter-spacing: 0; font-size: .75rem; color: var(--text); }
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; position: relative; height: 60vh; }
+  #status { font-size: .7rem; color: var(--muted); margin-bottom: 1rem; }
+  #error { display:none; color:#e74c3c; font-size:.75rem; margin-bottom:1rem; }
+</style>
+</head>
+<body>
+
+<h1>Jackpots Paris — Historique</h1>
+<p class="subtitle">Page privée · non indexée · accès par token uniquement</p>
+<p id="status">Chargement de l'historique…</p>
+<p id="error"></p>
+
+<div class="controls">
+  <div>
+    <label for="club-select">Club</label>
+    <select id="club-select"></select>
+  </div>
+  <div class="checks" id="jackpot-checks"></div>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+</div>
+
+<script>
+const CLUBS = {
+  pasino:        { name: 'Partouche Pasino Club', keys: { ultimate: 'Ultimate Poker', blackjack_major: 'Blackjack Major', blackjack_minor: 'Blackjack Minor' } },
+  imperial:      { name: 'Imperial Club Paris',    keys: { ultimate: 'Ultimate Poker', blackjack_major: 'Blackjack Major', blackjack_minor: 'Blackjack Minor' } },
+  barriere:      { name: 'Club Barrière Paris',    keys: { ultimate: 'Ultimate Poker', blackjack_major: 'Blackjack Major', blackjack_minor: 'Blackjack Minor' } },
+  elyseesclub:   { name: 'Paris Élysées Club',     keys: { ultimate: 'Ultimate Poker', blackjack: 'Blackjack' } },
+  circus:        { name: 'Club Circus Paris',      keys: { uth_progressive: 'Ultimate Poker', blazing_blackjack: 'Blackjack Major' } },
+  pierrecharron: { name: 'Club Pierre Charron',    keys: { ultimate: 'Ultimate Poker', blackjack_major: 'Blackjack Major', blackjack_minor: 'Blackjack Minor' } },
+  montmartre:    { name: 'Club Montmartre Paris',  keys: { mega_ultimate: 'Ultimate Poker', mega_blackjack: 'Blackjack Major', minor: 'Blackjack Minor' } },
+};
+
+const COLORS = ['#c9a84c', '#e74c3c', '#2ecc71', '#5b9bd5'];
+
+const token = new URLSearchParams(location.search).get('token') || '';
+let history = [];
+let chart = null;
+
+const select = document.getElementById('club-select');
+Object.entries(CLUBS).forEach(([id, c]) => {
+  const opt = document.createElement('option');
+  opt.value = id; opt.textContent = c.name;
+  select.appendChild(opt);
+});
+
+function buildChecks(clubId) {
+  const wrap = document.getElementById('jackpot-checks');
+  wrap.innerHTML = '';
+  Object.entries(CLUBS[clubId].keys).forEach(([key, label]) => {
+    const lbl = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.dataset.key = key;
+    cb.addEventListener('change', () => drawChart(select.value));
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(label));
+    wrap.appendChild(lbl);
+  });
+}
+
+function drawChart(clubId) {
+  const keys = CLUBS[clubId].keys;
+  const checks = [...document.querySelectorAll('#jackpot-checks input')];
+  const activeKeys = checks.filter(c => c.checked).map(c => c.dataset.key);
+
+  const datasets = activeKeys.map((key, i) => ({
+    label: keys[key],
+    data: history.map(entry => ({
+      x: entry.ts,
+      y: entry.clubs?.[clubId]?.[key] ?? null
+    })),
+    borderColor: COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length],
+    spanGaps: false,
+    tension: 0.15,
+    pointRadius: 0,
+    borderWidth: 2,
+  }));
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('chart'), {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: false },
+      scales: {
+        x: { type: 'time', time: { tooltipFormat: 'dd/MM/yyyy HH:mm' }, ticks: { color: '#5a5040' }, grid: { color: '#2a2a2a' } },
+        y: { ticks: { color: '#5a5040', callback: v => v.toLocaleString('fr-FR') + ' €' }, grid: { color: '#2a2a2a' } }
+      },
+      plugins: {
+        legend: { labels: { color: '#e8e0cc' } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('fr-FR')} €` } }
+      }
+    }
+  });
+}
+
+select.addEventListener('change', () => {
+  buildChecks(select.value);
+  drawChart(select.value);
+});
+
+async function load() {
+  try {
+    const res = await fetch('/api/history?token=' + encodeURIComponent(token) + '&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    history = await res.json();
+    document.getElementById('status').textContent = history.length + ' points d\'historique chargés.';
+    buildChecks(select.value);
+    drawChart(select.value);
+  } catch (err) {
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').textContent = 'Erreur de chargement : ' + err.message + ' (token invalide ?)';
+    document.getElementById('status').textContent = '';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

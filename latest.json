@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-15T04:03:34.518Z",
+  "ts": "2026-07-15T04:33:41.165Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -50,9 +50,9 @@
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "187 856 €",
-        "mega_blackjack": "33 314 €",
-        "minor": "3 945 €"
+        "mega_ultimate": "187 874 €",
+        "mega_blackjack": "33 329 €",
+        "minor": "3 958 €"
       }
     }
   }

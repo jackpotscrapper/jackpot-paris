@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-15T05:33:55.054Z",
+  "ts": "2026-07-15T06:03:56.937Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -35,8 +35,8 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "39 404 €",
-        "blazing_blackjack": "22 407 €"
+        "uth_progressive": "39 146 €",
+        "blazing_blackjack": "22 318 €"
       }
     },
     "pierrecharron": {
@@ -51,8 +51,8 @@
       "ok": true,
       "data": {
         "mega_ultimate": "187 874 €",
-        "mega_blackjack": "33 377 €",
-        "minor": "4 002 €"
+        "mega_blackjack": "33 395 €",
+        "minor": "4 018 €"
       }
     }
   }

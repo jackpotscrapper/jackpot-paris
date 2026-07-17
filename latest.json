@@ -1,22 +1,20 @@
 {
-  "ts": "2026-07-16T23:42:43.498Z",
+  "ts": "2026-07-17T00:11:56.413Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
         "ultimate": null,
-        "blackjack_major": "31 832 €",
-        "blackjack_minor": "5 660 €"
+        "blackjack_major": "31 864 €",
+        "blackjack_minor": "5 689 €"
       }
     },
     "imperial": {
-      "ok": false,
-      "stale": true,
-      "error": "net::ERR_TIMED_OUT at https://imperialclubparis.com/",
+      "ok": true,
       "data": {
-        "blackjack_minor": "1 799 €",
-        "blackjack_major": "12 475 €",
-        "ultimate": "59 065 €"
+        "blackjack_minor": "966 €",
+        "blackjack_major": "13 053 €",
+        "ultimate": "60 890 €"
       }
     },
     "barriere": {
@@ -44,17 +42,17 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "9 567 €",
-        "blackjack_major": "18 693 €",
-        "ultimate": "33 705 €"
+        "blackjack_minor": "9 587 €",
+        "blackjack_major": "18 715 €",
+        "ultimate": "33 774 €"
       }
     },
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "194 942 €",
-        "mega_blackjack": "33 985 €",
-        "minor": "4 555 €"
+        "mega_ultimate": "195 138 €",
+        "mega_blackjack": "33 987 €",
+        "minor": "4 557 €"
       }
     }
   }

@@ -44,7 +44,13 @@ async function scrapeImperial(page) {
   });
 }
 
-// ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
+// ─── 2. Club Barrière Paris — VERSION DIAGNOSTIC (temporaire) ────────────────
+// La regex habituelle ("Nom","Montant" adjacents) capte des faux positifs car
+// le format "devalue" de Nuxt 3 référence les valeurs par index : le nombre
+// qui suit un mot-clé dans le texte brut n'est pas forcément son montant.
+// Cette version affiche le contexte brut autour des mots-clés pour identifier
+// la vraie structure, puis fait échouer volontairement le scrape (comportement
+// temporaire, à remplacer dès que le diagnostic est fait).
 async function scrapeBarriere(page) {
   let payloadBody = null;
 
@@ -65,42 +71,32 @@ async function scrapeBarriere(page) {
 
   if (!payloadBody) throw new Error('Barriere: _payload.json non capturé');
 
-  const clean = (raw) => {
-    const num = parseFloat(raw);
-    if (isNaN(num) || num < 100) return null;
-    return Math.floor(num).toLocaleString('fr-FR') + ' €';
-  };
+  console.log('  📏 Taille du payload capturé :', payloadBody.length, 'caractères');
 
-  // On ne se fie qu'au couple adjacent "Nom","Montant" — le format "devalue"
-  // de Nuxt 3 ne place pas toujours l'objet descripteur {_uid,...,component:289}
-  // juste après chaque valeur (ex: Mineur, dernier de la liste, est suivi d'un
-  // objet totalement différent). Le filtrage par mot-clé sur le nom suffit à
-  // éviter les faux positifs ailleurs dans le payload.
-  const regex = /"([^"]{3,60})","(\d{2,7}(?:\.\d{1,2})?)"/g;
+  const keywords = ['majeur', 'mineur', 'ultimate', 'royale', 'hold'];
+  const lower = payloadBody.toLowerCase();
 
-  const result = {
-    ultimate: null,
-    blackjack_major: null,
-    blackjack_minor: null,
-  };
-
-  let m;
-  while ((m = regex.exec(payloadBody)) !== null) {
-    const name = m[1].toLowerCase();
-    const amount = m[2];
-    if (name.includes('ultimate') || name.includes('hold'))     result.ultimate = clean(amount);
-    else if (name.includes('majeur'))                            result.blackjack_major = clean(amount);
-    else if (name.includes('mineur'))                            result.blackjack_minor = clean(amount);
-    // 'royale' volontairement ignoré
+  for (const kw of keywords) {
+    console.log(`\n  ── Occurrences de "${kw}" ──`);
+    let idx = 0;
+    let count = 0;
+    while (count < 6) { // max 6 occurrences par mot-clé pour ne pas noyer les logs
+      idx = lower.indexOf(kw, idx);
+      if (idx === -1) break;
+      const start = Math.max(0, idx - 100);
+      const end = Math.min(payloadBody.length, idx + kw.length + 150);
+      console.log(`  [pos ${idx}] ...${payloadBody.slice(start, end)}...`);
+      idx += kw.length;
+      count++;
+    }
+    if (count === 0) console.log('  (aucune occurrence)');
   }
 
-  console.log('  Barriere jackpots bruts:', JSON.stringify(result));
-
-  if (!result.blackjack_major && !result.blackjack_minor) {
-    throw new Error('Barriere: aucun jackpot capturé');
-  }
-
-  return result;
+  // On ne throw pas pour signaler un échec réel du site, mais pour indiquer
+  // que le mode diagnostic est actif — le run produit quand même un
+  // latest.json avec les autres clubs, et conserve les anciennes valeurs
+  // Barrière connues (mécanisme de résilience v4.2).
+  throw new Error('Barriere: mode diagnostic — voir logs ci-dessus, pas de valeurs extraites');
 }
 
 // ─── 3. Paris Élysées Club ────────────────────────────────────────────────────

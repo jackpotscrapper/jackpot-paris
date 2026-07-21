@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-21T07:01:37.902Z",
+  "ts": "2026-07-21T07:33:43.202Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -33,7 +33,9 @@
       }
     },
     "circus": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Navigation timeout of 60000 ms exceeded",
       "data": {
         "uth_progressive": "50 152 €",
         "blazing_blackjack": "8 840 €"

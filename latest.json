@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-26T07:28:24.669Z",
+  "ts": "2026-07-26T07:54:40.296Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -40,9 +40,7 @@
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
+      "ok": true,
       "data": {
         "blackjack_minor": "17 482 €",
         "blackjack_major": "27 399 €",

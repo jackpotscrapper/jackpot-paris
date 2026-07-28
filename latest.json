@@ -1,5 +1,5 @@
 {
-  "ts": "2026-07-28T04:41:52.952Z",
+  "ts": "2026-07-28T05:15:36.715Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -28,8 +28,8 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": "17 104 €",
-        "ultimate": "22 973 €"
+        "blackjack": "17 319 €",
+        "ultimate": "24 577 €"
       }
     },
     "circus": {
@@ -40,7 +40,9 @@
       }
     },
     "pierrecharron": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
       "data": {
         "blackjack_minor": "19 457 €",
         "blackjack_major": "29 571 €",
@@ -51,8 +53,8 @@
       "ok": true,
       "data": {
         "mega_ultimate": "35 423 €",
-        "mega_blackjack": "37 217 €",
-        "minor": "4 180 €"
+        "mega_blackjack": "37 222 €",
+        "minor": "4 184 €"
       }
     }
   }

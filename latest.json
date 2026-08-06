@@ -1,8 +1,10 @@
 {
-  "ts": "2026-08-06T10:07:52.323Z",
+  "ts": "2026-08-06T10:37:55.197Z",
   "results": {
     "pasino": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Pasino: aucun jackpot capturé",
       "data": {
         "ultimate": null,
         "blackjack_major": "20 920 €",
@@ -20,9 +22,9 @@
     "barriere": {
       "ok": true,
       "data": {
-        "ultimate": "57 711 €",
-        "blackjack_major": "29 204 €",
-        "blackjack_minor": "45 215 €"
+        "ultimate": "59 448 €",
+        "blackjack_major": "30 106 €",
+        "blackjack_minor": "45 816 €"
       }
     },
     "elyseesclub": {

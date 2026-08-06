@@ -1,15 +1,10 @@
 {
-  "ts": "2026-08-06T10:37:55.197Z",
+  "ts": "2026-08-06T11:07:54.172Z",
   "results": {
     "pasino": {
       "ok": false,
-      "stale": true,
       "error": "Pasino: aucun jackpot capturé",
-      "data": {
-        "ultimate": null,
-        "blackjack_major": "20 920 €",
-        "blackjack_minor": "9 028 €"
-      }
+      "data": {}
     },
     "imperial": {
       "ok": true,

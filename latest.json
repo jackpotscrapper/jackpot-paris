@@ -1,5 +1,5 @@
 {
-  "ts": "2026-08-15T06:00:39.049Z",
+  "ts": "2026-08-15T06:30:37.121Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -32,8 +32,8 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "40 828 €",
-        "blazing_blackjack": "16 858 €"
+        "uth_progressive": "40 817 €",
+        "blazing_blackjack": "16 853 €"
       }
     },
     "pierrecharron": {

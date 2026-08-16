@@ -1,5 +1,5 @@
 {
-  "ts": "2026-08-16T12:36:42.441Z",
+  "ts": "2026-08-16T13:06:50.820Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -32,15 +32,15 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "42 730 €",
-        "blazing_blackjack": "17 086 €"
+        "uth_progressive": "42 903 €",
+        "blazing_blackjack": "17 088 €"
       }
     },
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "5 521 €",
-        "blackjack_major": "51 312 €",
+        "blackjack_minor": "5 552 €",
+        "blackjack_major": "51 345 €",
         "ultimate": "22 792 €"
       }
     },

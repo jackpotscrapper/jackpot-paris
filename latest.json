@@ -1,5 +1,5 @@
 {
-  "ts": "2026-08-16T05:05:15.162Z",
+  "ts": "2026-08-16T05:35:30.105Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -48,8 +48,8 @@
       "ok": true,
       "data": {
         "mega_ultimate": "57 238 €",
-        "mega_blackjack": "42 733 €",
-        "minor": "4 860 €"
+        "mega_blackjack": "42 745 €",
+        "minor": "4 871 €"
       }
     }
   }

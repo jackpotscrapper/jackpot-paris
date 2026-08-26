@@ -1,12 +1,12 @@
 {
-  "ts": "2026-08-26T13:01:21.495Z",
+  "ts": "2026-08-26T13:31:36.809Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
         "ultimate": null,
-        "blackjack_major": "49 024 €",
-        "blackjack_minor": "1 724 €"
+        "blackjack_major": "49 075 €",
+        "blackjack_minor": "1 770 €"
       }
     },
     "imperial": {
@@ -42,8 +42,8 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "4 795 €",
-        "blackjack_major": "18 584 €",
+        "blackjack_minor": "4 796 €",
+        "blackjack_major": "18 585 €",
         "ultimate": "12 267 €"
       }
     },

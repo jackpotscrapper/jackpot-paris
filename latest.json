@@ -1,5 +1,5 @@
 {
-  "ts": "2026-08-26T03:29:30.533Z",
+  "ts": "2026-08-26T03:59:53.343Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -41,15 +41,15 @@
       "data": {
         "blackjack_minor": "4 795 €",
         "blackjack_major": "18 584 €",
-        "ultimate": "12 112 €"
+        "ultimate": "12 174 €"
       }
     },
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "10 659 €",
-        "mega_blackjack": "45 892 €",
-        "minor": "2 987 €"
+        "mega_ultimate": "10 683 €",
+        "mega_blackjack": "45 894 €",
+        "minor": "2 989 €"
       }
     }
   }

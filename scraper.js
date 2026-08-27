@@ -8,6 +8,12 @@ const DATA_DIR = process.env.DATA_DIR || '.';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ─── 1. Imperial Club Paris ───────────────────────────────────────────────────
+// v4.16 : le site n'affiche plus "MINOR 3.926 €" dans un seul nœud de texte en
+// majuscules. Le label ("Minor"/"Major", casse mixte) et le montant sont
+// désormais dans deux éléments séparés (label sur une ligne, montant sur la
+// ligne suivante). On lit donc le texte visible de la page ligne par ligne et
+// on associe chaque label au montant qui le suit immédiatement, plutôt que de
+// dépendre d'un motif exact dans un seul nœud.
 async function scrapeImperial(page) {
   await sleep(3000);
   return page.evaluate(() => {
@@ -16,30 +22,42 @@ async function scrapeImperial(page) {
       if (!d || parseInt(d, 10) < 100) return null;
       return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
     };
+
+    const lines = document.body.innerText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
+
     let blackjack_minor = null, blackjack_major = null, ultimate = null;
 
-    document.querySelectorAll('*').forEach(el => {
-      if (el.children.length > 3) return;
-      const t = el.textContent.trim();
-      if (!t || t.length > 60) return;
-      if (/^MINOR\s+[\d.,\s]+€/.test(t)) {
-        const m = t.match(/[\d.,]+/); if (m) blackjack_minor = clean(m[0]);
-      }
-      if (/^MAJOR\s+[\d.,\s]+€/.test(t)) {
-        const m = t.match(/[\d.,]+/); if (m) blackjack_major = clean(m[0]);
-      }
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-    document.querySelectorAll('*').forEach(el => {
-      if (el.children.length > 3) return;
-      const t = el.textContent.trim();
-      if (!t || t.length > 30) return;
-      if (t.includes('MINOR') || t.includes('MAJOR')) return;
-      if (/^[\d.,\s]+€$/.test(t)) {
-        const n = parseInt(t.replace(/[^\d]/g, ''), 10);
-        if (n > 5000) ultimate = clean(t);
+      // Label seul ("Minor" / "Major"), montant sur la ligne suivante
+      if (/^minor$/i.test(line) && !blackjack_minor) {
+        const m = (lines[i + 1] || '').match(/[\d.,]+/);
+        if (m) blackjack_minor = clean(m[0]);
+        continue;
       }
-    });
+      if (/^major$/i.test(line) && !blackjack_major) {
+        const m = (lines[i + 1] || '').match(/[\d.,]+/);
+        if (m) blackjack_major = clean(m[0]);
+        continue;
+      }
+
+      // Ultimate : montant seul en tête de ligne (parfois suivi de texte
+      // collé type "40.731 €Jackpot progressif"), non labellisé Minor/Major.
+      // Le carousel duplique le bloc plus bas dans la page (même vidéo,
+      // affichage répété) : on ne garde donc que la première occurrence.
+      if (!ultimate) {
+        const m = line.match(/^([\d.,]+)\s*€/);
+        if (m) {
+          const value = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+          if (value > 5000) ultimate = clean(m[1]);
+        }
+      }
+    }
+
     return { blackjack_minor, blackjack_major, ultimate };
   });
 }

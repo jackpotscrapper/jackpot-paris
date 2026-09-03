@@ -1,20 +1,20 @@
 {
-  "ts": "2026-09-03T19:45:27.050Z",
+  "ts": "2026-09-03T20:16:03.596Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
         "ultimate": null,
-        "blackjack_major": "7 286 €",
-        "blackjack_minor": "11 284 €"
+        "blackjack_major": "7 363 €",
+        "blackjack_minor": "11 354 €"
       }
     },
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "1 967 €",
-        "blackjack_major": "31 648 €",
-        "ultimate": "9 525 €"
+        "blackjack_minor": "1 968 €",
+        "blackjack_major": "31 650 €",
+        "ultimate": "9 582 €"
       }
     },
     "barriere": {
@@ -42,13 +42,15 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "12 145 €",
-        "blackjack_major": "26 669 €",
-        "ultimate": "37 760 €"
+        "blackjack_minor": "12 155 €",
+        "blackjack_major": "26 680 €",
+        "ultimate": "37 833 €"
       }
     },
     "montmartre": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Montmartre: GetMeters non capturé",
       "data": {
         "mega_ultimate": "14 900 €",
         "mega_blackjack": "48 612 €",

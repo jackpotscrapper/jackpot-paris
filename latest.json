@@ -1,5 +1,5 @@
 {
-  "ts": "2026-09-06T06:27:05.397Z",
+  "ts": "2026-09-06T06:57:09.198Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -20,9 +20,9 @@
     "barriere": {
       "ok": true,
       "data": {
-        "ultimate": "18 839 €",
-        "blackjack_major": "66 500 €",
-        "blackjack_minor": "2 852 €"
+        "ultimate": "6 498 €",
+        "blackjack_major": "67 309 €",
+        "blackjack_minor": "3 762 €"
       }
     },
     "elyseesclub": {

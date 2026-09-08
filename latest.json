@@ -1,5 +1,5 @@
 {
-  "ts": "2026-09-08T08:39:20.089Z",
+  "ts": "2026-09-08T09:05:00.056Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -40,9 +40,7 @@
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "Navigation timeout of 90000 ms exceeded",
+      "ok": true,
       "data": {
         "blackjack_minor": "5 370 €",
         "blackjack_major": "31 026 €",

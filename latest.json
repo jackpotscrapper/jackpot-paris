@@ -1,5 +1,5 @@
 {
-  "ts": "2026-09-13T07:51:58.575Z",
+  "ts": "2026-09-13T08:22:35.554Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -18,7 +18,9 @@
       }
     },
     "barriere": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Barriere: _payload.json non capturé",
       "data": {
         "ultimate": "21 097 €",
         "blackjack_major": "72 532 €",
@@ -35,8 +37,8 @@
     "circus": {
       "ok": true,
       "data": {
-        "uth_progressive": "135 132 €",
-        "blazing_blackjack": "29 042 €"
+        "uth_progressive": "135 133 €",
+        "blazing_blackjack": "29 043 €"
       }
     },
     "pierrecharron": {

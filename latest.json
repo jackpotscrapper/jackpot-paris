@@ -1,20 +1,20 @@
 {
-  "ts": "2026-09-13T00:20:33.364Z",
+  "ts": "2026-09-13T00:50:33.253Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
         "ultimate": null,
-        "blackjack_major": "11 005 €",
-        "blackjack_minor": "2 496 €"
+        "blackjack_major": "11 050 €",
+        "blackjack_minor": "2 537 €"
       }
     },
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "5 247 €",
-        "blackjack_major": "35 257 €",
-        "ultimate": "21 607 €"
+        "blackjack_minor": "5 273 €",
+        "blackjack_major": "35 285 €",
+        "ultimate": "21 616 €"
       }
     },
     "barriere": {
@@ -28,8 +28,8 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": "29 933 €",
-        "ultimate": "20 699 €"
+        "blackjack": null,
+        "ultimate": null
       }
     },
     "circus": {
@@ -42,17 +42,17 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "8 563 €",
-        "blackjack_major": "34 538 €",
-        "ultimate": "83 471 €"
+        "blackjack_minor": "8 577 €",
+        "blackjack_major": "34 553 €",
+        "ultimate": "83 792 €"
       }
     },
     "montmartre": {
       "ok": true,
       "data": {
-        "mega_ultimate": "24 715 €",
-        "mega_blackjack": "51 707 €",
-        "minor": "2 795 €"
+        "mega_ultimate": "24 752 €",
+        "mega_blackjack": "51 708 €",
+        "minor": "2 796 €"
       }
     }
   }

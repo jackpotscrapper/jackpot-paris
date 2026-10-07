@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-07T16:52:39.549Z",
+  "ts": "2026-10-07T17:22:24.756Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -9,9 +9,9 @@
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "12 477 €",
-        "blackjack_major": "4 793 €",
-        "ultimate": "60 014 €"
+        "blackjack_minor": "12 487 €",
+        "blackjack_major": "4 802 €",
+        "ultimate": "60 074 €"
       }
     },
     "barriere": {
@@ -39,9 +39,9 @@
     "pierrecharron": {
       "ok": true,
       "data": {
-        "blackjack_minor": "3 094 €",
-        "blackjack_major": "64 422 €",
-        "ultimate": "16 319 €"
+        "blackjack_minor": "3 147 €",
+        "blackjack_major": "64 481 €",
+        "ultimate": "16 403 €"
       }
     },
     "montmartre": {

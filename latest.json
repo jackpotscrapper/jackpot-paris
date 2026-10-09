@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-09T17:22:50.059Z",
+  "ts": "2026-10-09T17:48:22.477Z",
   "results": {
     "pasino": {
       "ok": false,
@@ -9,9 +9,9 @@
     "imperial": {
       "ok": true,
       "data": {
-        "blackjack_minor": "1 796 €",
-        "blackjack_major": "3 359 €",
-        "ultimate": "63 808 €"
+        "blackjack_minor": "1 800 €",
+        "blackjack_major": "3 364 €",
+        "ultimate": "63 860 €"
       }
     },
     "barriere": {
@@ -37,13 +37,11 @@
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "net::ERR_CONNECTION_TIMED_OUT at https://www.clubpierrecharron.com/",
+      "ok": true,
       "data": {
-        "blackjack_minor": "4 976 €",
-        "blackjack_major": "66 493 €",
-        "ultimate": "9 046 €"
+        "blackjack_minor": "4 997 €",
+        "blackjack_major": "66 516 €",
+        "ultimate": "9 146 €"
       }
     },
     "montmartre": {

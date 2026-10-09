@@ -1,0 +1,26 @@
+name: Diagnose Network
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL du club à diagnostiquer'
+        required: true
+        default: 'https://www.pariselyseesclub.com/fr/'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with: { node-version: '24' }
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      - run: npm install
+      - env:
+          DIAGNOSE_URL: ${{ github.event.inputs.url }}
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+          PUPPETEER_EXECUTABLE_PATH: '/usr/bin/google-chrome-stable'
+        run: node diagnose-network.js

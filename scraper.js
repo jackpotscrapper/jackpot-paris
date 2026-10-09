@@ -130,24 +130,26 @@ async function scrapeBarriere(page) {
 }
 
 // ─── 3. Paris Élysées Club ────────────────────────────────────────────────────
+// v4.17 : refonte du site (URL /fr/). Les jackpots ne sont plus dans des
+// <article.jackpot-card><p.jackpot-label/value> : ils sont injectés en JS depuis
+// Supabase dans la bannière #jackpot-banner sous forme de
+//   <a class="jackpot-card" data-amount="83305.1"> ... <span class="jackpot-label">
+// On lit l'attribut data-amount (valeur exacte, indépendante du formatage /
+// de l'animation de compteur) et on identifie le jeu par le libellé.
 async function scrapeElysees(page) {
-  await sleep(3000);
+  await page.waitForSelector('#jackpot-banner a.jackpot-card[data-amount]', { timeout: 30000 });
+  await sleep(1500);
   return page.evaluate(() => {
-    const clean = (raw) => {
-      const d = (raw || '').replace(/[^\d]/g, '');
-      if (!d || parseInt(d, 10) < 100) return null;
-      return parseInt(d, 10).toLocaleString('fr-FR') + ' €';
-    };
+    const fmt = (n) =>
+      Number.isFinite(n) && n >= 100 ? Math.round(n).toLocaleString('fr-FR') + ' €' : null;
     const result = { blackjack: null, ultimate: null };
-    document.querySelectorAll('article.jackpot-card').forEach(card => {
-      const label = card.querySelector('p.jackpot-label');
-      const value = card.querySelector('p.jackpot-value');
-      if (!label || !value) return;
-      const lbl = label.textContent.trim().toUpperCase();
-      const amt = clean(value.textContent.trim());
+    // On ne garde que la première occurrence de chaque jackpot
+    document.querySelectorAll('#jackpot-banner a.jackpot-card[data-amount]').forEach(card => {
+      const label = (card.querySelector('.jackpot-label')?.textContent || '').trim().toUpperCase();
+      const amt = fmt(parseFloat(card.getAttribute('data-amount')));
       if (!amt) return;
-      if (lbl.includes('BLACKJACK')) result.blackjack = amt;
-      else if (lbl.includes('ULTIMATE')) result.ultimate = amt;
+      if (!result.blackjack && label.includes('BLACKJACK')) result.blackjack = amt;
+      else if (!result.ultimate && label.includes('ULTIMATE')) result.ultimate = amt;
     });
     return result;
   });
@@ -318,8 +320,17 @@ async function scrapeMontmartre(page) {
 // Jackpots via l'API appolonia-api.partouche.com (site_id 00066).
 // Le nom du jeu est dans le champ "name" de la réponse, pas dans le path de
 // l'URL (trompeur : /uth/ retourne en fait les compteurs Blackjack "Blazing 7's").
-// Ultimate Poker : endpoint pas encore branché côté Partouche (club ouvert le
-// 12/05/2026) — renvoie null en attendant, sans faire échouer le scrape.
+// Ultimate Poker : endpoint pas encore branché côté Partouche — renvoie null en
+// attendant, sans faire échouer le scrape.
+//
+// v4.17 : le site (refonte Astro) charge l'appel /bj/progressive/amount de façon
+// différée et n'affiche que le premier compteur (Major) dans le DOM ; la page ne
+// atteint en outre plus toujours "networkidle2" (analytics, chat, pubs). On ne
+// dépend donc plus du déclenchement de la requête par la page :
+//   1. on écoute quand même les réponses (si la page les déclenche),
+//   2. on charge en domcontentloaded, on scrolle pour réveiller le chargement différé,
+//   3. à défaut, on appelle l'API directement depuis la page (même origine, pas de CORS).
+// Réponse : data[].meters[] avec index 1 = Major, index 2 = Minor (valeurs en euros).
 async function scrapePasino(page) {
   const responses = [];
 
@@ -327,44 +338,72 @@ async function scrapePasino(page) {
     if (response.url().includes('appolonia-api.partouche.com/site/00066') &&
         response.url().includes('progressive/amount')) {
       try {
-        const json = await response.json();
-        responses.push(json);
+        responses.push(await response.json());
       } catch (e) {}
     }
   });
 
-  await page.goto('https://www.partouchepasinoclub.com/', {
-    waitUntil: 'networkidle2', timeout: 60000
-  });
+  // networkidle2 n'est plus fiable sur ce site : on se contente du DOM chargé
+  try {
+    await page.goto('https://www.partouchepasinoclub.com/', {
+      waitUntil: 'domcontentloaded', timeout: 60000
+    });
+  } catch (e) {
+    console.log('  ⚠ Pasino goto:', e.message);
+  }
 
-  // Le site est parfois protégé par un checkpoint anti-bot Vercel qui affiche
-  // une page intermédiaire avant de rediriger vers le vrai contenu. On laisse
-  // le temps au challenge JS de se résoudre et à la redirection de se faire.
-  const title = await page.title();
+  // Checkpoint anti-bot Vercel : on laisse le challenge JS se résoudre
+  const title = await page.title().catch(() => '');
   if (title.includes('Security Checkpoint')) {
     console.log('  ⏳ Pasino: checkpoint anti-bot détecté, attente de résolution...');
     await sleep(5000);
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
   }
 
-  await sleep(3000);
+  // Réveille le chargement différé de la section jackpots, puis attend la réponse
+  await page.evaluate(async () => {
+    for (let i = 0; i < 10; i++) {
+      window.scrollBy(0, 700);
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }).catch(() => {});
+  for (let i = 0; i < 20 && responses.length === 0; i++) await sleep(500);
+
+  // Filet de sécurité : appel direct de l'API depuis la page
+  if (responses.length === 0) {
+    console.log('  ↪ Pasino: aucune réponse interceptée, appel direct de l\'API');
+    const direct = await page.evaluate(async () => {
+      const out = [];
+      for (const ep of ['bj', 'uth']) {
+        try {
+          const res = await fetch(`https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`, { credentials: 'omit' });
+          out.push(await res.json());
+        } catch (e) {}
+      }
+      return out;
+    }).catch(() => []);
+    responses.push(...direct);
+  }
 
   const clean = (value) => {
-    if (typeof value !== 'number' || value < 100) return null;
-    return Math.floor(value).toLocaleString('fr-FR') + ' €';
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 100) return null;
+    return Math.floor(n).toLocaleString('fr-FR') + ' €';
   };
 
   const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
 
   for (const json of responses) {
-    const entry = json?.data?.[0];
-    if (!entry?.meters) continue;
-    const name = (entry.name || '').toLowerCase();
-    if (name.includes('blazing') || name.includes('black')) {
-      result.blackjack_major = clean(entry.meters[0]?.value);
-      result.blackjack_minor = clean(entry.meters[1]?.value);
-    } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
-      result.ultimate = clean(entry.meters[0]?.value);
+    for (const entry of (json?.data || [])) {
+      if (!entry?.meters) continue;
+      const name = (entry.name || '').toLowerCase();
+      const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
+      if (name.includes('blazing') || name.includes('black')) {
+        if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
+        if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
+      } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
+        if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
+      }
     }
   }
 
@@ -381,7 +420,7 @@ const clubs = [
   { id: 'pasino',        name: 'Partouche Pasino Club',  url: 'https://www.partouchepasinoclub.com/',          scrapeFn: scrapePasino },
   { id: 'imperial',      name: 'Imperial Club Paris',    url: 'https://imperialclubparis.com/',                scrapeFn: scrapeImperial },
   { id: 'barriere',      name: 'Club Barrière Paris',    url: 'https://www.casinosbarriere.com/paris',         scrapeFn: scrapeBarriere },
-  { id: 'elyseesclub',   name: 'Paris Élysées Club',     url: 'https://www.pariselyseesclub.com/',             scrapeFn: scrapeElysees },
+  { id: 'elyseesclub',   name: 'Paris Élysées Club',     url: 'https://www.pariselyseesclub.com/fr/',             scrapeFn: scrapeElysees },
   { id: 'circus',        name: 'Club Circus Paris',      url: 'https://www.circuscasino.fr/fr/casinos/paris/', scrapeFn: scrapeCircus },
   { id: 'pierrecharron', name: 'Club Pierre Charron',    url: 'https://www.clubpierrecharron.com/',            scrapeFn: scrapePierreCharron },
   { id: 'montmartre',    name: 'Club Montmartre Paris',  url: 'https://www.clubmontmartre-paris.com/',         scrapeFn: scrapeMontmartre },
@@ -400,9 +439,14 @@ async function scrapeClubOnce(browser, club) {
         else req.continue();
       });
     }
-    const timeout   = club.id === 'pierrecharron' ? 90000 : 60000;
-    const waitUntil = club.id === 'pierrecharron' ? 'domcontentloaded' : 'networkidle2';
-    await page.goto(club.url, { waitUntil, timeout });
+    // Barrière, Montmartre et Pasino gèrent eux-mêmes leur navigation
+    // (écouteur de réponses posé AVANT le goto). Pour les autres, on charge ici.
+    const selfNavigating = ['pasino'].includes(club.id);
+    if (!selfNavigating) {
+      const timeout   = club.id === 'pierrecharron' ? 90000 : 60000;
+      const waitUntil = club.id === 'pierrecharron' ? 'domcontentloaded' : 'networkidle2';
+      await page.goto(club.url, { waitUntil, timeout });
+    }
     return await club.scrapeFn(page);
   } finally {
     await page.close();

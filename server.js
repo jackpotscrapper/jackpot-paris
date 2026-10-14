@@ -1,8 +1,10 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const admin = require('./admin');
 
 const app = express();
+app.set('trust proxy', 1); // IP réelle derrière Render (limitation des essais du code admin)
 const PORT = process.env.PORT || 3000;
 
 const GITHUB_USER = process.env.GITHUB_USER;
@@ -19,6 +21,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Saisie manuelle cachée (UTH Pasino) : /m.js + POST /api/m/uth ──────────
+app.use(admin.router);
+
 // ── Fichiers statiques ─────────────────────────────────────────────────────
 app.use(express.static(__dirname));
 
@@ -29,7 +34,8 @@ app.get('/api/latest', async (req, res) => {
   try {
     const r = await fetch(RAW_URL + '?t=' + Date.now(), { timeout: 10000 });
     if (!r.ok) return res.json({ ts: null, results: {} });
-    const data = await r.json();
+    let data = await r.json();
+    data = await admin.applyManual(data); // valeur manuelle UTH Pasino si le scraper n'a rien trouvé
     res.json(data);
   } catch (err) {
     res.json({ ts: null, results: {}, error: err.message });

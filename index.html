@@ -230,6 +230,17 @@
 
     .jackpot-row:last-of-type { border-bottom: none; }
 
+    /* Ligne avec date de relevé : la bordure passe sous la date */
+    .jackpot-row.has-ts { border-bottom: none; padding-bottom: .1rem; }
+    .jp-ts {
+      font-size: .55rem;
+      letter-spacing: .1em;
+      color: var(--muted);
+      text-align: right;
+      padding-bottom: .55rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+
     .jp-label {
       font-size: .62rem;
       letter-spacing: .15em;
@@ -477,7 +488,19 @@ function render(data) {
 
       row.appendChild(lbl);
       row.appendChild(val);
-      card.appendChild(row);
+
+      // Date/heure de relevé sous le montant (valeurs saisies manuellement)
+      const tsIso = rawVal ? club.data?.[key + '_ts'] : null;
+      if (tsIso) {
+        row.classList.add('has-ts');
+        card.appendChild(row);
+        const ts = document.createElement('div');
+        ts.className = 'jp-ts';
+        ts.textContent = 'Relevé le ' + formatReleve(tsIso);
+        card.appendChild(ts);
+      } else {
+        card.appendChild(row);
+      }
     });
 
     // Statut
@@ -505,6 +528,15 @@ function formatDate(iso) {
     hour: '2-digit', minute: '2-digit',
     timeZone: 'Europe/Paris'
   }) + ' (Paris)';
+}
+
+// ── Date de relevé : "14/10/2026 à 12:47" ─────────────────────────────────────
+function formatReleve(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  return date + ' à ' + time;
 }
 
 // ── Fetch & rafraîchissement ──────────────────────────────────────────────────

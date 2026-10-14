@@ -76,6 +76,7 @@ async function applyManual(latest) {
     const node = latest && latest.results && latest.results.pasino;
     if (manual && node && node.data && !node.data.ultimate) {
       node.data.ultimate = fmt(manual);
+      node.data.ultimate_ts = m.pasino.ts; // date/heure du relevé manuel (affichée sous le montant)
     }
   } catch (e) {
     console.error('[admin] applyManual:', e.message);

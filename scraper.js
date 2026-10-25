@@ -395,7 +395,9 @@ async function scrapePasino(page) {
         if (name.includes('blazing') || name.includes('black')) {
           if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
           if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
-        } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
+        } else if (name.includes('ultimate') || name.includes('uth') || name.includes('uhp') ||
+                   name.includes('hold') || name.includes('texas')) {
+          // v4.18 : Partouche nomme ce jeu "Main UHP texas"
           if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
         }
       }

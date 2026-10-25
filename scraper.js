@@ -319,26 +319,33 @@ async function scrapeMontmartre(page) {
 // ─── 7. Partouche Pasino Club ─────────────────────────────────────────────────
 // Jackpots via l'API appolonia-api.partouche.com (site_id 00066).
 // Le nom du jeu est dans le champ "name" de la réponse, pas dans le path de
-// l'URL (trompeur : /uth/ retourne en fait les compteurs Blackjack "Blazing 7's").
-// Ultimate Poker : endpoint pas encore branché côté Partouche — renvoie null en
-// attendant, sans faire échouer le scrape.
+// l'URL (trompeur : /uth/ retournait les compteurs Blackjack "Blazing 7's").
 //
-// v4.17 : le site (refonte Astro) charge l'appel /bj/progressive/amount de façon
-// différée et n'affiche que le premier compteur (Major) dans le DOM ; la page ne
-// atteint en outre plus toujours "networkidle2" (analytics, chat, pubs). On ne
-// dépend donc plus du déclenchement de la requête par la page :
-//   1. on écoute quand même les réponses (si la page les déclenche),
-//   2. on charge en domcontentloaded, on scrolle pour réveiller le chargement différé,
-//   3. à défaut, on appelle l'API directement depuis la page (même origine, pas de CORS).
-// Réponse : data[].meters[] avec index 1 = Major, index 2 = Minor (valeurs en euros).
+// v4.17 : le site (refonte Astro) charge les appels de façon différée et la page
+// n'atteint plus toujours "networkidle2". On ne dépend donc plus du déclenchement
+// de la requête par la page (écoute + scroll + appel direct en filet de sécurité).
+//
+// v4.18 : l'Ultimate Poker est désormais fourni par Partouche. Changements :
+//   1. on n'arrête plus d'attendre dès la 1re réponse (le Blackjack arrivait en
+//      premier et l'Ultimate, plus tardif, était manqué) : attente complémentaire ;
+//   2. si l'Ultimate manque encore, on DÉCOUVRE les endpoints réellement utilisés
+//      par la page (requêtes réseau + HTML) et on les appelle directement, en plus
+//      de /bj et /uth ;
+//   3. logs détaillés (endpoint, nom du jeu) visibles dans l'onglet Actions pour
+//      pouvoir ajuster sans ouvrir le site.
+// Réponse : data[].meters[] (valeurs en euros), tri par index.
 async function scrapePasino(page) {
   const responses = [];
+  const seenUrls = new Set();
 
   page.on('response', async (response) => {
-    if (response.url().includes('appolonia-api.partouche.com/site/00066') &&
-        response.url().includes('progressive/amount')) {
+    const url = response.url();
+    if (url.includes('appolonia-api.partouche.com/site/00066') &&
+        url.includes('progressive/amount')) {
       try {
         responses.push(await response.json());
+        seenUrls.add(url);
+        console.log('  Pasino réponse interceptée:', url);
       } catch (e) {}
     }
   });
@@ -369,21 +376,8 @@ async function scrapePasino(page) {
   }).catch(() => {});
   for (let i = 0; i < 20 && responses.length === 0; i++) await sleep(500);
 
-  // Filet de sécurité : appel direct de l'API depuis la page
-  if (responses.length === 0) {
-    console.log('  ↪ Pasino: aucune réponse interceptée, appel direct de l\'API');
-    const direct = await page.evaluate(async () => {
-      const out = [];
-      for (const ep of ['bj', 'uth']) {
-        try {
-          const res = await fetch(`https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`, { credentials: 'omit' });
-          out.push(await res.json());
-        } catch (e) {}
-      }
-      return out;
-    }).catch(() => []);
-    responses.push(...direct);
-  }
+  // v4.18 : une 1re réponse (Blackjack) ne signifie pas que l'Ultimate est arrivé
+  await sleep(4000);
 
   const clean = (value) => {
     const n = Number(value);
@@ -391,19 +385,67 @@ async function scrapePasino(page) {
     return Math.floor(n).toLocaleString('fr-FR') + ' €';
   };
 
-  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  const parse = () => {
+    const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+    for (const json of responses) {
+      for (const entry of (json?.data || [])) {
+        if (!entry?.meters) continue;
+        const name = (entry.name || '').toLowerCase();
+        const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
+        if (name.includes('blazing') || name.includes('black')) {
+          if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
+          if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
+        } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
+          if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
+        }
+      }
+    }
+    return result;
+  };
 
+  let result = parse();
+
+  // Filet de sécurité : appel direct de l'API depuis la page (même origine, pas de CORS).
+  // On appelle /bj et /uth, plus tous les endpoints découverts dans les requêtes
+  // de la page et dans son HTML.
+  if (!result.ultimate || !result.blackjack_major) {
+    console.log('  ↪ Pasino: valeurs manquantes, appel direct de l\'API');
+    const direct = await page.evaluate(async (alreadySeen) => {
+      const re = /appolonia-api\.partouche\.com\/site\/00066\/([A-Za-z0-9_-]+)\/progressive\/amount/g;
+      const eps = new Set(['bj', 'uth']);
+      const scan = (text) => {
+        let m;
+        while ((m = re.exec(text || '')) !== null) eps.add(m[1]);
+      };
+      try {
+        performance.getEntriesByType('resource').forEach(e => scan(e.name));
+      } catch (e) {}
+      try { scan(document.documentElement.outerHTML); } catch (e) {}
+
+      const out = [];
+      for (const ep of eps) {
+        const url = `https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`;
+        if (alreadySeen.includes(url)) continue;
+        try {
+          const res = await fetch(url, { credentials: 'omit' });
+          out.push({ ep, json: await res.json() });
+        } catch (e) {}
+      }
+      return { endpoints: [...eps], out };
+    }, [...seenUrls]).catch(() => ({ endpoints: [], out: [] }));
+
+    console.log('  Pasino endpoints testés:', direct.endpoints.join(', '));
+    for (const item of direct.out) responses.push(item.json);
+    result = parse();
+  }
+
+  // Logs de diagnostic : noms de jeux réellement renvoyés par l'API
   for (const json of responses) {
     for (const entry of (json?.data || [])) {
-      if (!entry?.meters) continue;
-      const name = (entry.name || '').toLowerCase();
-      const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
-      if (name.includes('blazing') || name.includes('black')) {
-        if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
-        if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
-      } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
-        if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
-      }
+      console.log('  Pasino jeu vu:', JSON.stringify({
+        name: entry?.name,
+        meters: (entry?.meters || []).map(m => m.value)
+      }));
     }
   }
 

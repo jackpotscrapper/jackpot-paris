@@ -1,10 +1,10 @@
 {
-  "ts": "2026-10-27T10:47:26.183Z",
+  "ts": "2026-10-27T11:17:35.006Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
-        "ultimate": "23 992 €",
+        "ultimate": "23 995 €",
         "blackjack_major": "74 664 €",
         "blackjack_minor": "5 818 €"
       }

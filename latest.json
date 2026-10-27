@@ -1,12 +1,12 @@
 {
-  "ts": "2026-10-27T02:47:13.755Z",
+  "ts": "2026-10-27T03:16:00.598Z",
   "results": {
     "pasino": {
       "ok": true,
       "data": {
-        "ultimate": "23 412 €",
-        "blackjack_major": "74 390 €",
-        "blackjack_minor": "5 569 €"
+        "ultimate": "23 610 €",
+        "blackjack_major": "74 492 €",
+        "blackjack_minor": "5 661 €"
       }
     },
     "imperial": {
@@ -14,7 +14,7 @@
       "data": {
         "blackjack_minor": "1 087 €",
         "blackjack_major": "3 507 €",
-        "ultimate": "12 573 €"
+        "ultimate": "12 593 €"
       }
     },
     "barriere": {
@@ -33,32 +33,26 @@
       }
     },
     "circus": {
-      "ok": false,
-      "stale": true,
-      "error": "Protocol error: Connection closed.",
+      "ok": true,
       "data": {
-        "uth_progressive": "9 539 €",
-        "blazing_blackjack": "8 388 €"
+        "uth_progressive": "10 567 €",
+        "blazing_blackjack": "8 871 €"
       }
     },
     "pierrecharron": {
-      "ok": false,
-      "stale": true,
-      "error": "Protocol error: Connection closed.",
+      "ok": true,
       "data": {
-        "blackjack_minor": "2 942 €",
-        "blackjack_major": "94 228 €",
-        "ultimate": "21 174 €"
+        "blackjack_minor": "3 164 €",
+        "blackjack_major": "94 472 €",
+        "ultimate": "21 266 €"
       }
     },
     "montmartre": {
-      "ok": false,
-      "stale": true,
-      "error": "Protocol error: Connection closed.",
+      "ok": true,
       "data": {
         "mega_ultimate": "22 953 €",
-        "mega_blackjack": "20 084 €",
-        "minor": "5 385 €"
+        "mega_blackjack": "20 106 €",
+        "minor": "5 404 €"
       }
     }
   }

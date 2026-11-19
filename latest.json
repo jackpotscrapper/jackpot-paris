@@ -1,5 +1,5 @@
 {
-  "ts": "2026-11-19T07:14:40.044Z",
+  "ts": "2026-11-19T07:45:01.911Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -48,7 +48,9 @@
       }
     },
     "montmartre": {
-      "ok": true,
+      "ok": false,
+      "stale": true,
+      "error": "Montmartre: GetMeters non capturé",
       "data": {
         "mega_ultimate": "19 995 €",
         "mega_blackjack": "8 721 €",

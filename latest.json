@@ -1,5 +1,5 @@
 {
-  "ts": "2026-11-21T05:53:55.325Z",
+  "ts": "2026-11-21T06:24:04.469Z",
   "results": {
     "pasino": {
       "ok": true,
@@ -28,8 +28,8 @@
     "elyseesclub": {
       "ok": true,
       "data": {
-        "blackjack": "52 663 €",
-        "ultimate": "7 924 €"
+        "blackjack": "53 018 €",
+        "ultimate": "8 856 €"
       }
     },
     "circus": {

@@ -63,69 +63,179 @@ async function scrapeImperial(page) {
 }
 
 // ─── 2. Club Barrière Paris ───────────────────────────────────────────────────
+// v4.19 : le site n'affiche plus qu'un bloc (qui fait défiler les jackpots toutes les 5-7 s) « Prochain jackpot à gagner » (montant
+// puis nom du jeu, ex. « 49 022 € » / « Ultimate Texas hold'em·Paris »). Les anciens
+// libellés «majeur» / «mineur» du payload ne sont plus garantis, et le scraper
+// échouait (« aucun jackpot capturé ») dès qu'il ne trouvait ni Major ni Minor,
+// alors que l'Ultimate était bien présent. Changements :
+//   1. la source de vérité est désormais le texte VISIBLE de la page (montant suivi
+//      du nom du jeu), car c'est ce que voit le visiteur ; le payload Nuxt reste
+//      un complément (il contient des doublons trompeurs, cf. v4.14) ;
+//   2. le payload est lu depuis _payload.json ET depuis <script id="__NUXT_DATA__">
+//      (Nuxt 3 l'inline parfois), et les montants peuvent être entre guillemets ou non ;
+//   3. un seul jackpot trouvé suffit (plus d'échec si Major/Minor sont absents) ;
+//   4. une seule navigation, écouteur posé avant le goto ;
+//   5. logs de diagnostic (voir « Barriere ... » dans l'onglet Actions).
+const barriereClean = (raw) => {
+  const num = parseFloat(raw);
+  if (isNaN(num) || num < 100) return null;
+  return Math.floor(num).toLocaleString('fr-FR') + ' €';
+};
+
+// Nom de jeu -> clé de résultat (null = ignoré)
+function barriereClassify(rawName) {
+  const name = (rawName || '').toLowerCase();
+  if (name.includes('royale')) return null;
+  if (name.includes('ultimate') || name.includes('hold')) return 'ultimate';
+  if (name.includes('majeur') || name.includes('major')) return 'blackjack_major';
+  if (name.includes('mineur') || name.includes('minor')) return 'blackjack_minor';
+  return null;
+}
+
+// Payload Nuxt : couple adjacent "Nom","Montant" (guillemets facultatifs autour du
+// montant). On ne garde que la PREMIÈRE valeur par jackpot (piège v4.14).
+function barrierePayloadParse(text) {
+  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  const pairs = [];
+  const regex = /"([^"]{3,60})",\s*"?(\d{2,7}(?:\.\d{1,2})?)"?/g;
+  let m;
+  while ((m = regex.exec(text || '')) !== null) {
+    const key = barriereClassify(m[1]);
+    if (!key) continue;
+    pairs.push(`${m[1]}=${m[2]}`);
+    if (!result[key]) result[key] = barriereClean(m[2]);
+  }
+  return { result, pairs };
+}
+
+// Texte visible : suite de nœuds texte. Un montant « 49 022 € » est suivi du nom du jeu.
+function barriereDomParse(items) {
+  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  const found = [];
+  const unknown = [];
+  const amountRe = /^(\d{1,3}(?:[\s\u00a0\u202f.]\d{3})+|\d{3,7})\s*€$/;
+  for (let i = 0; i < items.length; i++) {
+    const t = items[i].replace(/[\u00a0\u202f]/g, ' ').trim();
+    const am = t.match(amountRe);
+    if (!am) continue;
+    const digits = am[1].replace(/[^\d]/g, '');
+    // Le nom du jeu suit le montant ; on s'arrête au prochain montant pour ne pas
+    // attribuer à ce montant le nom du jackpot suivant.
+    let key = null, label = '';
+    for (let j = i + 1; j <= i + 3 && j < items.length; j++) {
+      const n = items[j].replace(/[\u00a0\u202f]/g, ' ').trim();
+      if (amountRe.test(n)) break;
+      const k = barriereClassify(n);
+      if (k) { key = k; label = n; break; }
+    }
+    if (!key) {
+      // montant suivi d'un libellé non reconnu : conservé pour les logs de diagnostic
+      const next = (items[i + 1] || '').slice(0, 40);
+      if (next && !amountRe.test(next.replace(/[\u00a0\u202f]/g, ' ').trim())) unknown.push(`${next}=${digits}`);
+      continue;
+    }
+    found.push(`${label}=${digits}`);
+    if (!result[key]) result[key] = barriereClean(digits);
+  }
+  return { result, found, unknown };
+}
+
 async function scrapeBarriere(page) {
-  let payloadBody = null;
+  const payloads = [];
 
   page.on('response', async (response) => {
     if (response.url().includes('_payload.json')) {
-      try {
-        const text = await response.text();
-        if (!payloadBody || text.length > payloadBody.length) payloadBody = text;
-      } catch (e) {}
+      try { payloads.push(await response.text()); } catch (e) {}
     }
   });
 
-  await page.goto('https://www.casinosbarriere.com/paris', {
-    waitUntil: 'networkidle2', timeout: 60000
+  try {
+    await page.goto('https://www.casinosbarriere.com/paris', {
+      waitUntil: 'networkidle2', timeout: 60000
+    });
+  } catch (e) {
+    console.log('  ⚠ Barriere goto:', e.message);
+  }
+  await sleep(4000);
+
+  // 1) Texte visible (nœuds texte, hors script/style). Le bloc « Prochain jackpot à
+  //    gagner » fait défiler les jackpots un par un (toutes les 5-7 s environ) : on
+  //    relit donc la page toutes les 2 s pendant ~28 s et on cumule ce qu'on voit
+  //    (la valeur la plus récente de chaque jackpot l'emporte).
+  const readItems = () => page.evaluate(() => {
+    const out = [];
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      const tag = n.parentElement ? n.parentElement.tagName : '';
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
+      const t = (n.nodeValue || '').replace(/\s+/g, ' ').trim();
+      if (t) out.push(t);
+    }
+    return out;
+  }).catch(() => []);
+
+  const domResult = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  const domSeen = new Set();
+  const domUnknown = new Set();
+  let items = [];
+  let samples = 0;
+  for (let i = 0; i < 14; i++) {
+    items = await readItems();
+    samples++;
+    const d = barriereDomParse(items);
+    d.found.forEach(f => domSeen.add(f));
+    d.unknown.forEach(u => domUnknown.add(u));
+    for (const k of Object.keys(domResult)) if (d.result[k]) domResult[k] = d.result[k];
+    if (domResult.ultimate && domResult.blackjack_major && domResult.blackjack_minor) break;
+    await sleep(2000);
+  }
+
+  // 2) Payload inline Nuxt 3
+  const inline = await page.evaluate(() => {
+    const el = document.getElementById('__NUXT_DATA__');
+    return el ? el.textContent : '';
+  }).catch(() => '');
+
+  console.log(`  Barriere sources: ${items.length} nœuds texte (dernier relevé), ${payloads.length} _payload.json, inline ${inline.length} car.`);
+
+  const dom = { result: domResult, found: [...domSeen] };
+  if (domUnknown.size) console.log('  Barriere DOM montants non reconnus:', JSON.stringify([...domUnknown].slice(0, 10)));
+  console.log(`  Barriere DOM (${samples} relevés):`, JSON.stringify(dom.found), JSON.stringify(dom.result));
+
+  // Payload : plus gros d'abord, puis inline ; on complète sans écraser
+  const sources = [...payloads].sort((a, b) => b.length - a.length);
+  if (inline) sources.push(inline);
+  const fromPayload = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  sources.forEach((txt, idx) => {
+    const p = barrierePayloadParse(txt);
+    console.log(`  Barriere payload #${idx}:`, JSON.stringify(p.pairs.slice(0, 8)));
+    for (const k of Object.keys(fromPayload)) {
+      if (!fromPayload[k] && p.result[k]) fromPayload[k] = p.result[k];
+    }
   });
 
-  await sleep(2000);
+  // Si rien n'est reconnu, logue le contexte autour de « jackpot » pour diagnostic
+  if (!dom.found.length) {
+    const ctx = items.filter(t => /jackpot|€/i.test(t)).slice(0, 12);
+    console.log('  Barriere contexte (jackpot/€):', JSON.stringify(ctx));
+  }
 
-  if (!payloadBody) throw new Error('Barriere: _payload.json non capturé');
-
-  const clean = (raw) => {
-    const num = parseFloat(raw);
-    if (isNaN(num) || num < 100) return null;
-    return Math.floor(num).toLocaleString('fr-FR') + ' €';
-  };
-
-  // On ne se fie qu'au couple adjacent "Nom","Montant" — le format "devalue"
-  // de Nuxt 3 ne place pas toujours l'objet descripteur {_uid,...,component:289}
-  // juste après chaque valeur. Le filtrage par mot-clé sur le nom suffit à
-  // éviter les faux positifs ailleurs dans le payload.
-  //
-  // Piège v4.14 : le payload contient AUSSI un doublon "Ultimate Texas Hold'Em"
-  // plus loin dans le document (widget de recherche/booking, valeur 54322 sans
-  // rapport avec le vrai jackpot en cours). Comme la boucle parcourt tout le
-  // payload, ce doublon écrasait la bonne valeur trouvée en premier (21716.9).
-  // On ne garde donc que la PREMIÈRE valeur trouvée pour chaque jackpot.
-  const regex = /"([^"]{3,60})","(\d{2,7}(?:\.\d{1,2})?)"/g;
-
+  // Le visible prime ; le payload complète ce que la page n'affiche pas
   const result = {
-    ultimate: null,
-    blackjack_major: null,
-    blackjack_minor: null,
+    ultimate: dom.result.ultimate || fromPayload.ultimate,
+    blackjack_major: dom.result.blackjack_major || fromPayload.blackjack_major,
+    blackjack_minor: dom.result.blackjack_minor || fromPayload.blackjack_minor,
   };
-
-  let m;
-  while ((m = regex.exec(payloadBody)) !== null) {
-    const name = m[1].toLowerCase();
-    const amount = m[2];
-    if (!result.ultimate && (name.includes('ultimate') || name.includes('hold')))
-      result.ultimate = clean(amount);
-    else if (!result.blackjack_major && name.includes('majeur'))
-      result.blackjack_major = clean(amount);
-    else if (!result.blackjack_minor && name.includes('mineur'))
-      result.blackjack_minor = clean(amount);
-    // 'royale' volontairement ignoré
+  if (dom.result.ultimate && fromPayload.ultimate && dom.result.ultimate !== fromPayload.ultimate) {
+    console.log(`  Barriere: Ultimate visible (${dom.result.ultimate}) ≠ payload (${fromPayload.ultimate}) — visible retenu`);
   }
 
   console.log('  Barriere jackpots bruts:', JSON.stringify(result));
 
-  if (!result.blackjack_major && !result.blackjack_minor) {
+  if (!result.ultimate && !result.blackjack_major && !result.blackjack_minor) {
     throw new Error('Barriere: aucun jackpot capturé');
   }
-
   return result;
 }
 
@@ -319,33 +429,26 @@ async function scrapeMontmartre(page) {
 // ─── 7. Partouche Pasino Club ─────────────────────────────────────────────────
 // Jackpots via l'API appolonia-api.partouche.com (site_id 00066).
 // Le nom du jeu est dans le champ "name" de la réponse, pas dans le path de
-// l'URL (trompeur : /uth/ retournait les compteurs Blackjack "Blazing 7's").
+// l'URL (trompeur : /uth/ retourne en fait les compteurs Blackjack "Blazing 7's").
+// Ultimate Poker : endpoint pas encore branché côté Partouche — renvoie null en
+// attendant, sans faire échouer le scrape.
 //
-// v4.17 : le site (refonte Astro) charge les appels de façon différée et la page
-// n'atteint plus toujours "networkidle2". On ne dépend donc plus du déclenchement
-// de la requête par la page (écoute + scroll + appel direct en filet de sécurité).
-//
-// v4.18 : l'Ultimate Poker est désormais fourni par Partouche. Changements :
-//   1. on n'arrête plus d'attendre dès la 1re réponse (le Blackjack arrivait en
-//      premier et l'Ultimate, plus tardif, était manqué) : attente complémentaire ;
-//   2. si l'Ultimate manque encore, on DÉCOUVRE les endpoints réellement utilisés
-//      par la page (requêtes réseau + HTML) et on les appelle directement, en plus
-//      de /bj et /uth ;
-//   3. logs détaillés (endpoint, nom du jeu) visibles dans l'onglet Actions pour
-//      pouvoir ajuster sans ouvrir le site.
-// Réponse : data[].meters[] (valeurs en euros), tri par index.
+// v4.17 : le site (refonte Astro) charge l'appel /bj/progressive/amount de façon
+// différée et n'affiche que le premier compteur (Major) dans le DOM ; la page ne
+// atteint en outre plus toujours "networkidle2" (analytics, chat, pubs). On ne
+// dépend donc plus du déclenchement de la requête par la page :
+//   1. on écoute quand même les réponses (si la page les déclenche),
+//   2. on charge en domcontentloaded, on scrolle pour réveiller le chargement différé,
+//   3. à défaut, on appelle l'API directement depuis la page (même origine, pas de CORS).
+// Réponse : data[].meters[] avec index 1 = Major, index 2 = Minor (valeurs en euros).
 async function scrapePasino(page) {
   const responses = [];
-  const seenUrls = new Set();
 
   page.on('response', async (response) => {
-    const url = response.url();
-    if (url.includes('appolonia-api.partouche.com/site/00066') &&
-        url.includes('progressive/amount')) {
+    if (response.url().includes('appolonia-api.partouche.com/site/00066') &&
+        response.url().includes('progressive/amount')) {
       try {
         responses.push(await response.json());
-        seenUrls.add(url);
-        console.log('  Pasino réponse interceptée:', url);
       } catch (e) {}
     }
   });
@@ -376,8 +479,21 @@ async function scrapePasino(page) {
   }).catch(() => {});
   for (let i = 0; i < 20 && responses.length === 0; i++) await sleep(500);
 
-  // v4.18 : une 1re réponse (Blackjack) ne signifie pas que l'Ultimate est arrivé
-  await sleep(4000);
+  // Filet de sécurité : appel direct de l'API depuis la page
+  if (responses.length === 0) {
+    console.log('  ↪ Pasino: aucune réponse interceptée, appel direct de l\'API');
+    const direct = await page.evaluate(async () => {
+      const out = [];
+      for (const ep of ['bj', 'uth']) {
+        try {
+          const res = await fetch(`https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`, { credentials: 'omit' });
+          out.push(await res.json());
+        } catch (e) {}
+      }
+      return out;
+    }).catch(() => []);
+    responses.push(...direct);
+  }
 
   const clean = (value) => {
     const n = Number(value);
@@ -385,69 +501,19 @@ async function scrapePasino(page) {
     return Math.floor(n).toLocaleString('fr-FR') + ' €';
   };
 
-  const parse = () => {
-    const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
-    for (const json of responses) {
-      for (const entry of (json?.data || [])) {
-        if (!entry?.meters) continue;
-        const name = (entry.name || '').toLowerCase();
-        const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
-        if (name.includes('blazing') || name.includes('black')) {
-          if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
-          if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
-        } else if (name.includes('ultimate') || name.includes('uth') || name.includes('uhp') ||
-                   name.includes('hold') || name.includes('texas')) {
-          // v4.18 : Partouche nomme ce jeu "Main UHP texas"
-          if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
-        }
-      }
-    }
-    return result;
-  };
+  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
 
-  let result = parse();
-
-  // Filet de sécurité : appel direct de l'API depuis la page (même origine, pas de CORS).
-  // On appelle /bj et /uth, plus tous les endpoints découverts dans les requêtes
-  // de la page et dans son HTML.
-  if (!result.ultimate || !result.blackjack_major) {
-    console.log('  ↪ Pasino: valeurs manquantes, appel direct de l\'API');
-    const direct = await page.evaluate(async (alreadySeen) => {
-      const re = /appolonia-api\.partouche\.com\/site\/00066\/([A-Za-z0-9_-]+)\/progressive\/amount/g;
-      const eps = new Set(['bj', 'uth']);
-      const scan = (text) => {
-        let m;
-        while ((m = re.exec(text || '')) !== null) eps.add(m[1]);
-      };
-      try {
-        performance.getEntriesByType('resource').forEach(e => scan(e.name));
-      } catch (e) {}
-      try { scan(document.documentElement.outerHTML); } catch (e) {}
-
-      const out = [];
-      for (const ep of eps) {
-        const url = `https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`;
-        if (alreadySeen.includes(url)) continue;
-        try {
-          const res = await fetch(url, { credentials: 'omit' });
-          out.push({ ep, json: await res.json() });
-        } catch (e) {}
-      }
-      return { endpoints: [...eps], out };
-    }, [...seenUrls]).catch(() => ({ endpoints: [], out: [] }));
-
-    console.log('  Pasino endpoints testés:', direct.endpoints.join(', '));
-    for (const item of direct.out) responses.push(item.json);
-    result = parse();
-  }
-
-  // Logs de diagnostic : noms de jeux réellement renvoyés par l'API
   for (const json of responses) {
     for (const entry of (json?.data || [])) {
-      console.log('  Pasino jeu vu:', JSON.stringify({
-        name: entry?.name,
-        meters: (entry?.meters || []).map(m => m.value)
-      }));
+      if (!entry?.meters) continue;
+      const name = (entry.name || '').toLowerCase();
+      const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
+      if (name.includes('blazing') || name.includes('black')) {
+        if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
+        if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
+      } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
+        if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
+      }
     }
   }
 
@@ -483,9 +549,9 @@ async function scrapeClubOnce(browser, club) {
         else req.continue();
       });
     }
-    // Barrière, Montmartre et Pasino gèrent eux-mêmes leur navigation
+    // Barrière (v4.19) et Pasino gèrent eux-mêmes leur navigation
     // (écouteur de réponses posé AVANT le goto). Pour les autres, on charge ici.
-    const selfNavigating = ['pasino'].includes(club.id);
+    const selfNavigating = ['pasino', 'barriere'].includes(club.id);
     if (!selfNavigating) {
       const timeout   = club.id === 'pierrecharron' ? 90000 : 60000;
       const waitUntil = club.id === 'pierrecharron' ? 'domcontentloaded' : 'networkidle2';

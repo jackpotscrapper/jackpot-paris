@@ -428,27 +428,93 @@ async function scrapeMontmartre(page) {
 
 // ─── 7. Partouche Pasino Club ─────────────────────────────────────────────────
 // Jackpots via l'API appolonia-api.partouche.com (site_id 00066).
-// Le nom du jeu est dans le champ "name" de la réponse, pas dans le path de
-// l'URL (trompeur : /uth/ retourne en fait les compteurs Blackjack "Blazing 7's").
-// Ultimate Poker : endpoint pas encore branché côté Partouche — renvoie null en
-// attendant, sans faire échouer le scrape.
+// Le nom du jeu est dans le champ "name" de la réponse (pas dans le path de l'URL) :
+//   /bj/  -> "Blazing 7's 5 Euro" : meters[0] = Blackjack Major, meters[1] = Minor
+//   /uth/ -> "Main UHP texas"     : meters[0] = Ultimate Poker
+// Valeurs en euros, décimales tronquées (14579.5 -> "14 579 €").
 //
-// v4.17 : le site (refonte Astro) charge l'appel /bj/progressive/amount de façon
-// différée et n'affiche que le premier compteur (Major) dans le DOM ; la page ne
-// atteint en outre plus toujours "networkidle2" (analytics, chat, pubs). On ne
-// dépend donc plus du déclenchement de la requête par la page :
-//   1. on écoute quand même les réponses (si la page les déclenche),
-//   2. on charge en domcontentloaded, on scrolle pour réveiller le chargement différé,
-//   3. à défaut, on appelle l'API directement depuis la page (même origine, pas de CORS).
-// Réponse : data[].meters[] avec index 1 = Major, index 2 = Minor (valeurs en euros).
-async function scrapePasino(page) {
+// v4.17 : chargement différé du site (refonte Astro) -> domcontentloaded + scroll
+//         + appel direct de l'API depuis la page.
+// v4.18 : l'Ultimate est fourni par Partouche sous le nom "Main UHP texas" : mots-clés
+//         "uhp" et "texas" ajoutés ; attente complémentaire après la 1re réponse ;
+//         découverte des endpoints de la page ; logs de diagnostic.
+// v4.20 : en plus du navigateur, l'API publique est appelée DIRECTEMENT depuis Node
+//         (sans Puppeteer). Si la page ne déclenche plus l'appel (chargement différé,
+//         checkpoint anti-bot, changement du site), l'Ultimate est quand même récupéré.
+//         Le résultat du navigateur reste prioritaire.
+
+const pasinoClean = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 100) return null;
+  return Math.floor(n).toLocaleString('fr-FR') + ' €';
+};
+
+// Réponses API -> { ultimate, blackjack_major, blackjack_minor } (identification par "name")
+function pasinoParse(responses) {
+  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+  for (const json of responses) {
+    for (const entry of (json?.data || [])) {
+      if (!entry?.meters) continue;
+      const name = (entry.name || '').toLowerCase();
+      const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
+      if (name.includes('blazing') || name.includes('black')) {
+        if (!result.blackjack_major) result.blackjack_major = pasinoClean(meters[0]?.value);
+        if (!result.blackjack_minor) result.blackjack_minor = pasinoClean(meters[1]?.value);
+      } else if (name.includes('ultimate') || name.includes('uth') || name.includes('uhp') ||
+                 name.includes('hold') || name.includes('texas')) {
+        if (!result.ultimate) result.ultimate = pasinoClean(meters[0]?.value);
+      }
+    }
+  }
+  return result;
+}
+
+// Appel direct de l'API depuis Node (fetch natif, Node 24)
+async function pasinoDirectApi() {
   const responses = [];
+  for (const ep of ['bj', 'uth']) {
+    const url = `https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`;
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Origin': 'https://www.partouchepasinoclub.com',
+          'Referer': 'https://www.partouchepasinoclub.com/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        },
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!res.ok) {
+        console.log(`  Pasino API directe /${ep}: HTTP ${res.status}`);
+        continue;
+      }
+      const json = await res.json();
+      responses.push(json);
+      for (const entry of (json?.data || [])) {
+        console.log('  Pasino API directe jeu vu:', JSON.stringify({
+          ep, name: entry?.name, meters: (entry?.meters || []).map(m => m.value)
+        }));
+      }
+    } catch (e) {
+      console.log(`  Pasino API directe /${ep}: ${e.message}`);
+    }
+  }
+  return pasinoParse(responses);
+}
+
+// Partie navigateur : écoute des réponses de la page, scroll, appel direct dans la page
+async function scrapePasinoBrowser(page) {
+  const responses = [];
+  const seenUrls = new Set();
 
   page.on('response', async (response) => {
-    if (response.url().includes('appolonia-api.partouche.com/site/00066') &&
-        response.url().includes('progressive/amount')) {
+    const url = response.url();
+    if (url.includes('appolonia-api.partouche.com/site/00066') &&
+        url.includes('progressive/amount')) {
       try {
         responses.push(await response.json());
+        seenUrls.add(url);
+        console.log('  Pasino réponse interceptée:', url);
       } catch (e) {}
     }
   });
@@ -479,49 +545,78 @@ async function scrapePasino(page) {
   }).catch(() => {});
   for (let i = 0; i < 20 && responses.length === 0; i++) await sleep(500);
 
-  // Filet de sécurité : appel direct de l'API depuis la page
-  if (responses.length === 0) {
-    console.log('  ↪ Pasino: aucune réponse interceptée, appel direct de l\'API');
-    const direct = await page.evaluate(async () => {
+  // Une 1re réponse (Blackjack) ne signifie pas que l'Ultimate est arrivé
+  await sleep(4000);
+
+  let result = pasinoParse(responses);
+
+  // Filet de sécurité dans la page (même origine, pas de CORS) : /bj, /uth et tous les
+  // endpoints découverts dans les requêtes de la page et dans son HTML
+  if (!result.ultimate || !result.blackjack_major) {
+    console.log('  ↪ Pasino: valeurs manquantes, appel direct depuis la page');
+    const direct = await page.evaluate(async (alreadySeen) => {
+      const re = /appolonia-api\.partouche\.com\/site\/00066\/([A-Za-z0-9_-]+)\/progressive\/amount/g;
+      const eps = new Set(['bj', 'uth']);
+      const scan = (text) => {
+        let m;
+        while ((m = re.exec(text || '')) !== null) eps.add(m[1]);
+      };
+      try { performance.getEntriesByType('resource').forEach(e => scan(e.name)); } catch (e) {}
+      try { scan(document.documentElement.outerHTML); } catch (e) {}
+
       const out = [];
-      for (const ep of ['bj', 'uth']) {
+      for (const ep of eps) {
+        const url = `https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`;
+        if (alreadySeen.includes(url)) continue;
         try {
-          const res = await fetch(`https://appolonia-api.partouche.com/site/00066/${ep}/progressive/amount`, { credentials: 'omit' });
+          const res = await fetch(url, { credentials: 'omit' });
           out.push(await res.json());
         } catch (e) {}
       }
-      return out;
-    }).catch(() => []);
-    responses.push(...direct);
+      return { endpoints: [...eps], out };
+    }, [...seenUrls]).catch(() => ({ endpoints: [], out: [] }));
+
+    console.log('  Pasino endpoints testés:', direct.endpoints.join(', '));
+    responses.push(...direct.out);
+    result = pasinoParse(responses);
   }
 
-  const clean = (value) => {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 100) return null;
-    return Math.floor(n).toLocaleString('fr-FR') + ' €';
-  };
-
-  const result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
-
+  // Logs de diagnostic : noms de jeux réellement renvoyés par l'API
   for (const json of responses) {
     for (const entry of (json?.data || [])) {
-      if (!entry?.meters) continue;
-      const name = (entry.name || '').toLowerCase();
-      const meters = [...entry.meters].sort((a, b) => (a.index || 0) - (b.index || 0));
-      if (name.includes('blazing') || name.includes('black')) {
-        if (!result.blackjack_major) result.blackjack_major = clean(meters[0]?.value);
-        if (!result.blackjack_minor) result.blackjack_minor = clean(meters[1]?.value);
-      } else if (name.includes('ultimate') || name.includes('uth') || name.includes('hold')) {
-        if (!result.ultimate) result.ultimate = clean(meters[0]?.value);
-      }
+      console.log('  Pasino jeu vu:', JSON.stringify({
+        name: entry?.name,
+        meters: (entry?.meters || []).map(m => m.value)
+      }));
     }
   }
 
-  if (!result.blackjack_major) {
-    throw new Error('Pasino: aucun jackpot capturé');
+  console.log('  Pasino navigateur:', JSON.stringify(result));
+  return result;
+}
+
+async function scrapePasino(page) {
+  let result = { ultimate: null, blackjack_major: null, blackjack_minor: null };
+
+  try {
+    result = await scrapePasinoBrowser(page);
+  } catch (e) {
+    console.log('  ⚠ Pasino navigateur:', e.message);
+  }
+
+  // Complément : API directe côté Node pour tout ce que le navigateur n'a pas fourni
+  if (!result.ultimate || !result.blackjack_major || !result.blackjack_minor) {
+    console.log('  ↪ Pasino: complément par API directe (Node)');
+    const direct = await pasinoDirectApi();
+    for (const k of Object.keys(result)) {
+      if (!result[k] && direct[k]) result[k] = direct[k];
+    }
   }
 
   console.log('  Pasino jackpots bruts:', JSON.stringify(result));
+  if (!result.ultimate && !result.blackjack_major && !result.blackjack_minor) {
+    throw new Error('Pasino: aucun jackpot capturé');
+  }
   return result;
 }
 
